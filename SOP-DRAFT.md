@@ -24,3 +24,5 @@ SMEs and legal/ops teams receive messy file dumps — bad names, duplicates, wro
 
 ## Open questions
 - _Log here as they come up during the build._
+- Phase 0 surfaced the exception taxonomy the service should quote to clients: exact duplicates, near-duplicate names, naming violations, extension/content mismatches, zero-byte files, date anomalies, junk/system files, archives needing expansion, deep nesting. Promote into the SOP's "what we check" list once Phase 2 proves the rules.
+- Date checks can only rely on *modified* dates (creation time isn't portable) — set that expectation with clients.
