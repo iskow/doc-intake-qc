@@ -1,0 +1,200 @@
+{
+  "generated": "2026-07-19T23:09:39",
+  "file_count": 41,
+  "files": [
+    "mock-intake/Contracts/CTR-2026-01_ServiceAgreement_AcmeSupply.docx",
+    "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks.docx",
+    "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks_v2.docx",
+    "mock-intake/Contracts/CTR-2026-03_MSA_DeltaFreight.pdf",
+    "mock-intake/Contracts/Contract FINAL FINAL (use this one).docx",
+    "mock-intake/Contracts/scan_001.pdf",
+    "mock-intake/Correspondence/2026-03-14_AcmeSupply_kickoff.pdf",
+    "mock-intake/Correspondence/2026-03-15_AcmeSupply_followup.pdf",
+    "mock-intake/Correspondence/2026-04-02_BrightWorks_scope_change.pdf",
+    "mock-intake/Correspondence/RE RE FW Important!!.pdf",
+    "mock-intake/Correspondence/memo_draft.docx",
+    "mock-intake/Invoices/INV-2026-001_AcmeSupply.pdf",
+    "mock-intake/Invoices/INV-2026-002_AcmeSupply.pdf",
+    "mock-intake/Invoices/INV-2026-003_BrightWorks.pdf",
+    "mock-intake/Invoices/INV-2026-005_AcmeSupply (1).pdf",
+    "mock-intake/Invoices/INV-2026-005_AcmeSupply.pdf",
+    "mock-intake/Invoices/INV-2026-006_DeltaFreight.PDF",
+    "mock-intake/Invoices/INV-2026-007_DeltaFreight.pdf",
+    "mock-intake/Invoices/INV-2026-008_BrightWorks.pdf",
+    "mock-intake/Invoices/INV-2026-009_AcmeSupply.pdf",
+    "mock-intake/Invoices/inv 2026-004 brightworks FINAL.pdf",
+    "mock-intake/Invoices/invoice_batch_Q2.xlsx",
+    "mock-intake/Old Files/2019 archive/deep/nested/RPT-2031_forecast.pdf",
+    "mock-intake/Old Files/2019 archive/deep/nested/legacy_notes.doc",
+    "mock-intake/Old Files/2019 archive/deep/nested/misc_scan_0042.pdf",
+    "mock-intake/Reports/Copy of RPT-2026-Q1_Operations.pdf",
+    "mock-intake/Reports/RPT-2026-Q1_Financials.xlsx",
+    "mock-intake/Reports/RPT-2026-Q1_Operations.pdf",
+    "mock-intake/Reports/RPT-2026-Q2_Operations_DRAFT.docx",
+    "mock-intake/Site Photos/IMG_3847.jpg",
+    "mock-intake/Site Photos/site_photo_01.png",
+    "mock-intake/Site Photos/site_photo_02 - Copy.png",
+    "mock-intake/Site Photos/site_photo_02.png",
+    "mock-intake/Site Photos/site_photo_03.png",
+    "mock-intake/Thumbs.db",
+    "mock-intake/data_export.csv",
+    "mock-intake/empty_placeholder.pdf",
+    "mock-intake/notes.txt",
+    "mock-intake/old_backup.zip",
+    "mock-intake/report_final.pdf",
+    "mock-intake/~$ntract_temp.docx"
+  ],
+  "seeded_errors": [
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/Invoices/inv 2026-004 brightworks FINAL.pdf"
+      ],
+      "note": "Spaces, lowercase, and 'FINAL' suffix \u2014 breaks INV-YYYY-NNN_Vendor convention."
+    },
+    {
+      "type": "exact-duplicate",
+      "paths": [
+        "mock-intake/Invoices/INV-2026-005_AcmeSupply.pdf",
+        "mock-intake/Invoices/INV-2026-005_AcmeSupply (1).pdf"
+      ],
+      "note": "Copy-paste artifact \u2014 identical bytes, ' (1)' name."
+    },
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/Invoices/INV-2026-006_DeltaFreight.PDF"
+      ],
+      "note": "Uppercase '.PDF' extension \u2014 inconsistent with the rest of the set."
+    },
+    {
+      "type": "near-duplicate-name",
+      "paths": [
+        "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks.docx",
+        "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks_v2.docx"
+      ],
+      "note": "'_v2' variant beside the original \u2014 same base name, different content. Which version is authoritative?"
+    },
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/Contracts/Contract FINAL FINAL (use this one).docx"
+      ],
+      "note": "'FINAL FINAL (use this one)' \u2014 no ID, no convention, ambiguous authority."
+    },
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/Contracts/scan_001.pdf"
+      ],
+      "note": "'scan_001.pdf' \u2014 uninformative scanner-default name; content is a contract amendment."
+    },
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/Correspondence/RE RE FW Important!!.pdf"
+      ],
+      "note": "Forward-chain subject as filename \u2014 spaces, '!!', no date, no sender."
+    },
+    {
+      "type": "zero-byte",
+      "paths": [
+        "mock-intake/Correspondence/memo_draft.docx"
+      ],
+      "note": "Empty .docx \u2014 likely a failed save or interrupted transfer."
+    },
+    {
+      "type": "exact-duplicate",
+      "paths": [
+        "mock-intake/Reports/RPT-2026-Q1_Operations.pdf",
+        "mock-intake/Reports/Copy of RPT-2026-Q1_Operations.pdf"
+      ],
+      "note": "'Copy of' artifact \u2014 identical bytes under a different name."
+    },
+    {
+      "type": "exact-duplicate",
+      "paths": [
+        "mock-intake/Site Photos/site_photo_02.png",
+        "mock-intake/Site Photos/site_photo_02 - Copy.png"
+      ],
+      "note": "' - Copy' artifact \u2014 identical bytes."
+    },
+    {
+      "type": "extension-mismatch",
+      "paths": [
+        "mock-intake/Site Photos/IMG_3847.jpg"
+      ],
+      "note": "Named .jpg but the content is PNG (magic bytes say PNG)."
+    },
+    {
+      "type": "extension-mismatch",
+      "paths": [
+        "mock-intake/report_final.pdf"
+      ],
+      "note": "Named .pdf but the content is plain text \u2014 no PDF header."
+    },
+    {
+      "type": "naming-violation",
+      "paths": [
+        "mock-intake/report_final.pdf"
+      ],
+      "note": "'report_final.pdf' \u2014 uninformative name, no ID or date."
+    },
+    {
+      "type": "zero-byte",
+      "paths": [
+        "mock-intake/empty_placeholder.pdf"
+      ],
+      "note": "Empty .pdf \u2014 0 bytes."
+    },
+    {
+      "type": "junk-file",
+      "paths": [
+        "mock-intake/~$ntract_temp.docx"
+      ],
+      "note": "Office temp/lock file ('~$' prefix) \u2014 should never ship in a client dump."
+    },
+    {
+      "type": "junk-file",
+      "paths": [
+        "mock-intake/Thumbs.db"
+      ],
+      "note": "Windows thumbnail-cache system file."
+    },
+    {
+      "type": "archive",
+      "paths": [
+        "mock-intake/old_backup.zip"
+      ],
+      "note": "ZIP present in the intake \u2014 contents (2 files) are invisible until expanded."
+    },
+    {
+      "type": "deep-nesting",
+      "paths": [
+        "mock-intake/Old Files/2019 archive/deep/nested/misc_scan_0042.pdf"
+      ],
+      "note": "Four folder levels down \u2014 easy to miss in a manual review."
+    },
+    {
+      "type": "extension-mismatch",
+      "paths": [
+        "mock-intake/Old Files/2019 archive/deep/nested/legacy_notes.doc"
+      ],
+      "note": "Named .doc but the content is plain text."
+    },
+    {
+      "type": "date-anomaly",
+      "paths": [
+        "mock-intake/Old Files/2019 archive/deep/nested/legacy_notes.doc"
+      ],
+      "note": "Modified date 1980-05-12 \u2014 predates the client relationship (and most PCs)."
+    },
+    {
+      "type": "date-anomaly",
+      "paths": [
+        "mock-intake/Old Files/2019 archive/deep/nested/RPT-2031_forecast.pdf"
+      ],
+      "note": "Modified date 2031-01-15 \u2014 in the future; clock error or metadata tampering."
+    }
+  ]
+}
