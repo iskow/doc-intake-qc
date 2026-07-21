@@ -2,8 +2,8 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 2 — COMPLETE, gate passed (PASS 22 / FAIL 0). Awaiting Joel's approval to start Phase 3 (and to push Phases 1–2).
-**Last updated:** 2026-07-21 (Phase 2 — validation rules engine)
+**Current phase:** Phase 2 — COMPLETE, gate passed (PASS 22 / FAIL 0), **pushed**. Phase 3 approved by Joel and scoped (local Ollama classification — see DECISIONS 2026-07-21); build not yet started.
+**Last updated:** 2026-07-21 (Phase 2 pushed; Phase 3 LLM decision logged)
 
 ## Done
 - Plan approved by Joel (his go on Phase 0 doubled as plan QC).
@@ -21,11 +21,16 @@
 - Phase 1 gate re-run after the `scan.py` change: still PASS 13 / FAIL 0 — no regression.
 - **2026-07-20 — Document-author enrichment (Phase 0 amendment):** `make_mock_data.py` now embeds a document author (PDF `/Author`, DOCX/XLSX creator) — 22 files authored, 19 Unassigned. Answer key gained an `authors` map. One divergence file (`CTR-2026-01_..._AcmeSupply.docx`) authored by Meridian to prove author ≠ party ≠ custodian. Fixed reportlab's `"anonymous"` default. Verified: embedded authors match the answer key (0 mismatches); `qc_phase0.py` still PASS 39/0. See DECISIONS 2026-07-20. Not yet committed/pushed.
 
+- **2026-07-21 — Phases 1–2 pushed.** Both gates re-run green on the working tree first (Phase 2: PASS 22 / FAIL 0; Phase 1: PASS 13 / FAIL 0, no regression), then two phase-sized commits: `d7de3e5` (Phase 0 author amendment + Phase 1 scanner) and `0b152bc` (Phase 2 rules engine + docs). Pushed `6ef6525..0b152bc`; working tree clean. Stray 0-byte `.__wtest` (write-probe orphan, unreferenced by any script) removed, not committed.
+- **2026-07-21 — Phase 3 LLM decided:** local open-source instruct model via **Ollama**, not a hosted API. Full reasoning and the rejected options (DeepSeek V4, hosted free tiers) in DECISIONS 2026-07-21.
+
 ## Next
-- Joel approves Phase 2 → **push** (`scan.py` update, `rules.py`, `qc_phase2.py`, updated docs) via Desktop Commander, then start Phase 3 (AI classification layer) in a fresh session.
-- `exceptions.csv` added to `.gitignore` alongside `manifest.csv` (generated artifact; regenerates in one command). Done.
-- Phase 3 note: classify each doc (invoice / contract / correspondence / report / other) from extracted text using a free-tier LLM; confidence per doc; low confidence routes into the exceptions list, never silently accepted. Decide and log which LLM. `pypdf` is already installed and can extract PDF text; DOCX text via python-docx.
-- Phase 3 ground truth: the fixture's folder names (Invoices/, Contracts/, Correspondence/, Reports/) give an independent label to spot-check classifications against — but note the deliberate traps: `scan_001.pdf` sits in Contracts/ and `report_final.pdf` is text at the root.
+**Phase 3 — AI classification layer. Not started. Do this in a fresh session.**
+- Classify each doc (invoice / contract / correspondence / report / other) from extracted text; confidence per doc; low confidence routes into the exceptions list, never silently accepted.
+- **Load-bearing step first — do this before writing any pipeline code:** install Ollama (**not currently installed** — verified 2026-07-21), pull one candidate small instruct model, and classify ~10 fixture docs against the folder-name ground truth. Only build `classify.py` around a model that has already been measured. If it flunks, escalate to a larger local model or reopen the hosted-API question with evidence.
+- Pick the model at install time from what's actually current in the Ollama library — do not take a model tag from an agent's memory.
+- Text extraction: `pypdf` is already installed for PDF text; DOCX text via python-docx.
+- Ground-truth traps to watch: `scan_001.pdf` sits in `Contracts/` and `report_final.pdf` is text at the root — folder name is *independent* evidence, not gospel.
 
 ## Blockers
 - None.
@@ -34,6 +39,8 @@
 - Python on Joel's PC: use the **`py`** launcher (3.14.5). The bare `python`/`python3` names hit a Microsoft Store stub and fail. Run scripts via Desktop Commander: `py scripts\scan.py`. The sandbox Bash has no Python at all.
 - pandas **is now installed** (3.0.3, with numpy 2.5.1) — done in the Phase 2 session.
 - Installed this session (were missing under `py`): `python-docx`, `openpyxl`, `reportlab` (generator deps — restored) and `pypdf` (for reading PDF authors in Phase 2). `pillow` was already present.
+- **Hardware (verified 2026-07-21, for the Phase 3 local-model decision):** NVIDIA RTX 5070, **12,227 MiB VRAM** (`nvidia-smi`; note `Win32_VideoController` misreports this as 4 GB — the known 32-bit WMI overflow, don't trust it), 31.6 GB system RAM, Ryzen 5 7500F (6 cores). Comfortably runs an 8B-class model; cannot run DeepSeek V4 (284B/1.6T).
+- **Ollama is NOT installed** as of 2026-07-21 — first Phase 3 action.
 
 ## QC gate results
 | Phase | Result | Evidence |
