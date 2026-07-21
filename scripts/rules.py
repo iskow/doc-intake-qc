@@ -23,8 +23,18 @@ Why deterministic rules before any AI (Phase 3): they are testable and
 defensible. Every flag here traces to a concrete, explainable check — the
 eDiscovery standard. AI classification is added on top, never underneath.
 
-Read-only: this script only READS manifest.csv and WRITES exceptions.csv. It
-never touches anything under mock-intake/.
+Three further rules run only when classifications.csv exists (Phase 3 has been
+run). They judge the classifier's OUTPUT, which is why they live here with the
+other judgments rather than inside classify.py — that script gathers evidence,
+this one decides what is a problem:
+  UNCLASSIFIED    no label could be assigned (no readable text, or the model
+                  failed) — surfaced for manual review, never silently dropped
+  CLASS_CONFLICT  the content says one thing and the folder says another
+  LOW_CONFIDENCE  the model was unsure enough to warrant a human look
+
+Read-only: this script READS manifest.csv (and classifications.csv when
+present) and WRITES exceptions.csv. It never touches anything under
+mock-intake/.
 
 Run:  py scripts/rules.py        (Windows launcher; python3 on macOS/Linux)
 Output: exceptions.csv at the project root.
@@ -41,6 +51,14 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "manifest.csv"
 EXCEPTIONS = ROOT / "exceptions.csv"
+CLASSIFICATIONS = ROOT / "classifications.csv"   # optional — Phase 3 output
+
+# Below this confidence, a classification gets a human look before it is
+# trusted. Measured, not guessed: on this fixture the model reports 0.9-1.0 on
+# every document it can read, so this threshold fires zero times here. That is
+# a real result, not a broken rule — qc_phase3.py proves the rule works by
+# raising the threshold until it fires, then restoring it.
+CONFIDENCE_FLOOR = 0.75
 
 # Today's date bounds the "future date" check. Kept as a module constant so the
 # rule is testable and the report can state the window it used.
@@ -220,6 +238,43 @@ def find_exceptions(df: pd.DataFrame) -> list[dict]:
     return rows
 
 
+def classification_exceptions(cls: pd.DataFrame) -> list[dict]:
+    """Run the three Phase 3 rules over classifications.csv.
+
+    The design point worth understanding: classify.py never sees the folder
+    name, so the model's label and the folder it was filed in are two
+    INDEPENDENT pieces of evidence. When independent evidence disagrees, that
+    is a finding — the same reason a second reviewer is valuable. If we had fed
+    the folder into the prompt, the model would just echo it back and this rule
+    could never fire.
+    """
+    rows: list[dict] = []
+    for _, rec in cls.iterrows():
+        base = {"path": rec["path"], "name": rec["name"]}
+
+        # UNCLASSIFIED -------------------------------------------------------
+        # Anything the pipeline could not label. "never silently accepted" is
+        # the requirement — an unlabeled file must be visible, not absent.
+        if rec["status"] != "ok":
+            rows.append({**base, "rule_id": "UNCLASSIFIED", "severity": "medium",
+                         "detail": f"no classification assigned — {rec['reason']}"})
+            continue   # the rules below need a real label to mean anything
+
+        # CLASS_CONFLICT -----------------------------------------------------
+        hint = str(rec["folder_hint"]).strip()
+        if hint and rec["label"] != hint:
+            rows.append({**base, "rule_id": "CLASS_CONFLICT", "severity": "medium",
+                         "detail": f"content reads as '{rec['label']}' but the file "
+                                   f"sits in a '{hint}' folder"})
+
+        # LOW_CONFIDENCE -----------------------------------------------------
+        if float(rec["confidence"]) < CONFIDENCE_FLOOR:
+            rows.append({**base, "rule_id": "LOW_CONFIDENCE", "severity": "medium",
+                         "detail": f"model confidence {rec['confidence']} is below "
+                                   f"{CONFIDENCE_FLOOR} — verify by hand"})
+    return rows
+
+
 def naming_reasons(name: str) -> list[str]:
     """Return the list of naming-convention problems for a filename (empty if
     the name is clean). Each reason is a concrete, explainable signal."""
@@ -247,6 +302,13 @@ def main() -> None:
     df = pd.read_csv(MANIFEST, dtype={"extension": str}, keep_default_na=False)
 
     rows = find_exceptions(df)
+
+    # Phase 3's rules only run if the classifier has been run. Keeping this
+    # optional means Phase 2 still stands alone: a fresh clone can scan and
+    # apply the deterministic rules without Ollama installed at all.
+    if CLASSIFICATIONS.exists():
+        cls = pd.read_csv(CLASSIFICATIONS, keep_default_na=False)
+        rows += classification_exceptions(cls)
 
     out = pd.DataFrame(rows, columns=FIELDS)
     # Stable, reviewable order: by file, then rule.

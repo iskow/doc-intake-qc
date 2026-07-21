@@ -88,6 +88,14 @@ def main() -> int:
     manifest = pd.read_csv(MANIFEST, dtype={"extension": str}, keep_default_na=False)
     exc = pd.read_csv(EXCEPTIONS, keep_default_na=False)
 
+    # Scope this gate to Phase 2's own nine rules. Once Phase 3 has run,
+    # exceptions.csv also carries classification rules (UNCLASSIFIED and
+    # friends), which legitimately flag files that carry no SEEDED error — a
+    # site photo has no text to classify but is not a Phase 2 defect. Without
+    # this filter those rows would read as false positives and fail a gate that
+    # is not about them. qc_phase3.py owns the classification rows.
+    exc = exc[exc["rule_id"].isin(TYPE_TO_RULE.values())].reset_index(drop=True)
+
     # Index the exceptions as a set of (path, rule_id) pairs for fast lookup.
     flagged_pairs = set(zip(exc["path"], exc["rule_id"]))
     flagged_paths = set(exc["path"])

@@ -53,6 +53,77 @@ AUTH_DELTA = "Sam Ocampo"       # Delta Freight Ltd. contact
 AUTH_INTAKE = "Dana Cruz"       # Meridian Legal — intake / contracts
 AUTH_OPS = "M. Villanueva"      # Meridian Legal — operations / reports
 
+# --- document classes (Phase 3 ground truth) -------------------------------
+# What each fixture file ACTUALLY is, judged from the content written below --
+# not from its folder and not from its name. Phase 3's classifier is scored
+# against this map, so the two traps matter: `Contracts/scan_001.pdf` is a
+# contract wearing a scanner-default name, and `report_final.pdf` is a report
+# sitting at the root as plain text with a .pdf extension.
+#
+# Some files are honestly ambiguous, so the value is a LIST of acceptable
+# labels. `notes.txt` is a client handover note -- a reviewer could file it as
+# correspondence or as other, and both are defensible. Scoring the model
+# against one arbitrary pick would be fake precision, so we accept either.
+#
+# None means "no readable text, must NOT be given a label" -- images, the
+# archive, the empty files, and the binary junk file. Phase 3 must report
+# those as unclassified rather than guess.
+#
+# Keyed by path relative to mock-intake/. main() asserts this covers every
+# generated file, so adding a file without classifying it fails loudly here
+# instead of silently skewing the Phase 3 accuracy score.
+DOC_CLASSES: dict[str, list[str] | None] = {
+    # Invoices -- vendor bills. The spreadsheet is invoice DATA rather than an
+    # invoice itself, so "other" is also acceptable for it.
+    "Invoices/INV-2026-001_AcmeSupply.pdf": ["invoice"],
+    "Invoices/INV-2026-002_AcmeSupply.pdf": ["invoice"],
+    "Invoices/INV-2026-003_BrightWorks.pdf": ["invoice"],
+    "Invoices/inv 2026-004 brightworks FINAL.pdf": ["invoice"],
+    "Invoices/INV-2026-005_AcmeSupply.pdf": ["invoice"],
+    "Invoices/INV-2026-005_AcmeSupply (1).pdf": ["invoice"],
+    "Invoices/INV-2026-006_DeltaFreight.PDF": ["invoice"],
+    "Invoices/INV-2026-007_DeltaFreight.pdf": ["invoice"],
+    "Invoices/INV-2026-008_BrightWorks.pdf": ["invoice"],
+    "Invoices/INV-2026-009_AcmeSupply.pdf": ["invoice"],
+    "Invoices/invoice_batch_Q2.xlsx": ["invoice", "other"],
+    # Contracts -- agreements, including the amendment hiding under a scan name.
+    "Contracts/CTR-2026-01_ServiceAgreement_AcmeSupply.docx": ["contract"],
+    "Contracts/CTR-2026-02_NDA_BrightWorks.docx": ["contract"],
+    "Contracts/CTR-2026-02_NDA_BrightWorks_v2.docx": ["contract"],
+    "Contracts/CTR-2026-03_MSA_DeltaFreight.pdf": ["contract"],
+    "Contracts/Contract FINAL FINAL (use this one).docx": ["contract"],
+    "Contracts/scan_001.pdf": ["contract"],                     # TRAP: name says scan
+    # Correspondence -- emails rendered to PDF. The empty one has no content.
+    "Correspondence/2026-03-14_AcmeSupply_kickoff.pdf": ["correspondence"],
+    "Correspondence/2026-03-15_AcmeSupply_followup.pdf": ["correspondence"],
+    "Correspondence/2026-04-02_BrightWorks_scope_change.pdf": ["correspondence"],
+    "Correspondence/RE RE FW Important!!.pdf": ["correspondence"],
+    "Correspondence/memo_draft.docx": None,                     # 0 bytes
+    # Reports -- period summaries, including the financial workbook.
+    "Reports/RPT-2026-Q1_Operations.pdf": ["report"],
+    "Reports/Copy of RPT-2026-Q1_Operations.pdf": ["report"],
+    "Reports/RPT-2026-Q2_Operations_DRAFT.docx": ["report"],
+    "Reports/RPT-2026-Q1_Financials.xlsx": ["report"],
+    # Site photos -- solid-color images, no text of any kind.
+    "Site Photos/site_photo_01.png": None,
+    "Site Photos/site_photo_02.png": None,
+    "Site Photos/site_photo_02 - Copy.png": None,
+    "Site Photos/site_photo_03.png": None,
+    "Site Photos/IMG_3847.jpg": None,
+    # Loose files at the intake root.
+    "notes.txt": ["correspondence", "other"],                   # ambiguous on purpose
+    "data_export.csv": ["other"],                               # a vendor contact table
+    "report_final.pdf": ["report"],                             # TRAP: text, not a PDF
+    "empty_placeholder.pdf": None,                              # 0 bytes
+    "~$ntract_temp.docx": ["other"],                            # lock-file junk text
+    "Thumbs.db": None,                                          # binary junk
+    "old_backup.zip": None,                                     # never expanded
+    # Deeply nested legacy files.
+    "Old Files/2019 archive/deep/nested/legacy_notes.doc": ["other"],
+    "Old Files/2019 archive/deep/nested/misc_scan_0042.pdf": ["other"],
+    "Old Files/2019 archive/deep/nested/RPT-2031_forecast.pdf": ["report"],
+}
+
 # --- the answer key, built as we go ----------------------------------------
 seeded: list[dict] = []
 
@@ -400,12 +471,30 @@ def main() -> None:
     # Full path -> author map, including None for files with no embedded author
     # (Unassigned). Ground truth for Phase 2's author-extraction check.
     authors_map = {f: authors.get(f) for f in all_files}
+
+    # Document-class ground truth, keyed on the same full relative path as
+    # everything else. The two set-difference checks below are the drift guard:
+    # a new fixture file with no class, or a class entry naming a file that no
+    # longer exists, stops the generator instead of quietly skewing Phase 3's
+    # accuracy score.
+    classes_map = {f: DOC_CLASSES.get(f[len("mock-intake/"):]) for f in all_files}
+    unclassified = sorted(f for f in all_files
+                          if f[len("mock-intake/"):] not in DOC_CLASSES)
+    stale = sorted(k for k in DOC_CLASSES if f"mock-intake/{k}" not in all_files)
+    if unclassified or stale:
+        raise SystemExit(
+            "DOC_CLASSES is out of sync with the fixture.\n"
+            + "".join(f"  missing a class: {f}\n" for f in unclassified)
+            + "".join(f"  names a file that does not exist: {k}\n" for k in stale)
+        )
+
     key = {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "file_count": len(all_files),
         "files": all_files,
         "seeded_errors": seeded,
         "authors": authors_map,
+        "classes": classes_map,
     }
     (ROOT / "seeded-errors.json").write_text(json.dumps(key, indent=2), encoding="utf-8")
 
@@ -456,6 +545,28 @@ def main() -> None:
                  "AcmeSupply.docx` — filename party = Acme, embedded author = Dana Cruz "
                  "(Meridian). Proof that author != party != custodian.")
     lines.append("")
+
+    # Document classes are ground truth for Phase 3, not errors — own section.
+    classifiable = {f: c for f, c in classes_map.items() if c}
+    lines.append(f"## document-classes ({len(classifiable)} of {len(all_files)} files classifiable)")
+    lines.append("")
+    lines.append("_What each file ACTUALLY is, judged from its content — independent of "
+                 "the folder it sits in and the name it wears. Phase 3's classifier is "
+                 "scored against this. Files listed with two labels are honestly "
+                 "ambiguous and either answer is accepted._")
+    lines.append("")
+    for f in sorted(classifiable):
+        lines.append(f"- `{f}` -> {' | '.join(classifiable[f])}")
+    lines.append("")
+    lines.append(f"_{len(all_files) - len(classifiable)} files carry no readable text "
+                 "(images, the archive, the empty files, binary junk). Phase 3 must "
+                 "report these as **unclassified** — never guess a label._")
+    lines.append("")
+    lines.append("- **Class traps:** `mock-intake/Contracts/scan_001.pdf` is a contract "
+                 "amendment under a scanner-default name, and `mock-intake/report_final.pdf` "
+                 "is a report sitting at the root as plain text with a `.pdf` extension. "
+                 "Folder and filename are evidence, not gospel.")
+    lines.append("")
     (ROOT / "seeded-errors.md").write_text("\n".join(lines), encoding="utf-8")
 
     print(f"Fixture built: {key['file_count']} files in {INTAKE.name}/ (+2 inside the zip)")
@@ -463,6 +574,8 @@ def main() -> None:
           + ", ".join(f"{t}={len(v)}" for t, v in sorted(by_type.items())))
     print(f"Authors embedded: {len(named)} files "
           f"({len(all_files) - len(named)} unassigned).")
+    print(f"Classes assigned: {len(classifiable)} classifiable files "
+          f"({len(all_files) - len(classifiable)} with no readable text).")
 
 
 if __name__ == "__main__":
