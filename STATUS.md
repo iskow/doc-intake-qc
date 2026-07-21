@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 5 — **5a complete (one-command demo, README, committed screenshots, gate).** Gate passed (PASS 85 / FAIL 0), proven with three negative tests, all five prior gates re-run green. Phase 5 was split at kickoff: **5b is the portfolio close** — case-study skill, qc-gate skill, SOP-DRAFT final. Awaiting Joel's approval before 5b starts.
+**Current phase:** Phase 5 — **5a complete, committed and pushed** (`55a37c9`, `18281a1..55a37c9`). Gate passed (PASS 85 / FAIL 0), proven with three negative tests, re-run green on the working tree immediately before the push; all five prior gates re-run green. Phase 5 was split at kickoff: **5b is the portfolio close** — case-study skill, qc-gate skill, SOP-DRAFT final. Awaiting Joel's approval before 5b starts.
 **Last updated:** 2026-07-21 (Phase 5a: run_demo.py, README checked against the code, screenshot staleness guard)
 
 ## Done
