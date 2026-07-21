@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 4 — **4a and 4b complete** (organize + metadata fidelity). Gate passed (PASS 73 / FAIL 0), proven with three negative tests. **Not yet committed or pushed** — awaiting Joel's approval. **4c (the client-facing HTML QC report) is next, in a fresh session.**
+**Current phase:** Phase 4 — **4a and 4b complete, approved, committed and pushed** (`3afa710`, `10e7ce1..3afa710`). Gate passed (PASS 73 / FAIL 0), proven with three negative tests. **4c (the client-facing HTML QC report) is next, in a fresh session.**
 **Last updated:** 2026-07-21 (Phase 4b: batched robocopy engine, nested layout, mandatory cross-reference, collision preflight)
 
 ## Done
@@ -75,7 +75,7 @@ It gains a **date-fidelity section** that 4b makes possible — but write it car
 - **Report the three axes as a comparison**, not just a file list — the divergence file is the strongest single thing this project can show a prospective client.
 - Extend `scripts/qc_phase4.py` with the report checks (it currently covers 4a organize + 4b metadata fidelity). Keep the existing 73 checks green.
 - Run the full chain in order: `scan.py` → `classify.py` → `rules.py` → `organize.py`. `rules.py` reads `classifications.csv` if present, so classify must run before rules.
-- **Then Phase 5** (README one-command demo + case study final) — and Phase 4's two commits still need pushing.
+- **Then Phase 5** (README one-command demo + case study final). Phase 4 is pushed; nothing outstanding.
 
 ## Blockers
 - None.
@@ -88,7 +88,7 @@ It gains a **date-fidelity section** that 4b makes possible — but write it car
 - **Ollama is installed and running** (verified 2026-07-21). Model in use: **`gemma4:12b`** — 11.9B params, Q4_K_M, 7.04 GB. `ollama` is **not on the PATH** of a non-interactive shell; the binary lives at `%LOCALAPPDATA%\Programs\Ollama\ollama.exe`. Easiest check that it's up: `Invoke-RestMethod http://127.0.0.1:11434/api/tags`.
 - `classify.py` and `qc_phase3.py` need Ollama running. `scan.py`, `rules.py`, and the Phase 0/1/2 gates do **not** — Phase 2 still stands alone on a machine with no model installed.
 - **Phase 4 added no dependencies.** `organize.py` is pure standard library (`argparse`, `csv`, `shutil`, `fnmatch`, `pathlib`) — no pandas, because it only ever walks rows in order. `qc_phase4.py` needs Ollama only because it reruns `classify.py` as part of the fresh chain; `organize.py --by author` and `--by custodian` run on a machine with no model at all.
-- **This session's shell note:** the PowerShell tool ran `py` directly — Desktop Commander was not needed for script execution. (Pushing still needs it, for the cached GitHub credentials.)
+- **Shell note, corrected 2026-07-21 (Phase 4b session):** the PowerShell tool runs on Joel's real PC — `py`, `robocopy`, `icacls` and **`git push`** all work directly from it. The earlier note claiming pushes need Desktop Commander for cached GitHub credentials was wrong: `git push origin main` succeeded straight from PowerShell. Desktop Commander remains useful for the `.git/HEAD.lock` cleanup issue when git is run from a *sandboxed* shell.
 
 ## QC gate results
 | Phase | Result | Evidence |
