@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 5 — **5a and 5b both complete.** 5b (the portfolio close) is a documentation phase: no pipeline code was touched, so the six code gates are unchanged at 39/13/22/17/131/85. Deliverables are the case study, the standalone SOP in three formats, and one build gap found and documented. **Phase 5 is the last planned phase — the build is feature-complete.** Awaiting Joel's read before anything is published.
+**Current phase:** Phase 5 — **5a and 5b both complete, committed and pushed** (`5233b2c`, `4f51db5..5233b2c`). 5b (the portfolio close) is a documentation phase: no pipeline code was touched, so the six code gates are unchanged at 39/13/22/17/131/85. Deliverables are the case study, the standalone SOP in three formats, and one build gap found and documented. **Phase 5 is the last planned phase — the build is feature-complete.** Awaiting Joel's read before anything is published.
 **Last updated:** 2026-07-22 (Phase 5b: case study → portfolio, SOP → sops/internal in md/html/pdf, hardcoded-intake-path gap logged)
 
 ## Done
