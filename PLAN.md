@@ -21,16 +21,16 @@ Build the messy "client dump": ~40–60 files — PDFs, DOCX, XLSX, images, a ZI
 **QC gate:** Manifest row count = file count (verified in code). Hash-identical files share hashes. Ran on the fixture and watched it work.
 
 ### Phase 2 — Validation rules engine
-Rule checks over the manifest: exact dupes (hash), near-dupe names, naming-convention violations, extension/content mismatch, zero-byte, date anomalies. Output `exceptions.csv` with rule ID + severity.
-**QC gate:** Every seeded error appears in exceptions.csv (absence check against the answer key). Zero false "clean" verdicts. Rules documented in SOP-DRAFT.md.
+Rule checks over the manifest: exact dupes (hash), near-dupe names, naming-convention violations, extension/content mismatch, zero-byte, date anomalies. Output `exceptions.csv` with rule ID + severity. **Author enrichment:** also read each file's embedded **document author** (PDF `/Author` via `pypdf`; DOCX/XLSX core.xml creator) into a new `author` manifest column — Unassigned where the format can't carry one or the file won't parse as its claimed type. (Author is distinct from custodian; see DECISIONS 2026-07-20.)
+**QC gate:** Every seeded error appears in exceptions.csv (absence check against the answer key). Zero false "clean" verdicts. Extracted `author` column matches the `authors` map in `seeded-errors.json` (0 mismatches). Rules documented in SOP-DRAFT.md.
 
 ### Phase 3 — AI classification layer
 Classify each document (invoice / contract / correspondence / report / other) using a free-tier LLM on extracted text snippets. Confidence per doc; low confidence routes to exceptions, never silently accepted.
 **QC gate:** Spot-check 10 classifications by hand; all low-confidence docs in the exceptions list; API cost = $0. Decision on which LLM logged in DECISIONS.md.
 
 ### Phase 4 — QC report + non-destructive organize
-Generate the deliverable: an HTML/MD QC report (summary stats, exceptions by severity, classification breakdown) plus an organized copy of the intake (renamed to convention, sorted by class). Originals never modified.
-**QC gate:** Report totals reconcile with manifest (in code). Organized copy is complete — file count matches, hashes match originals. Report passes the client-ready test.
+Generate the deliverable: an HTML/MD QC report (summary stats, exceptions by severity, classification breakdown) plus a non-destructive organized copy of the intake. `organize.py` takes a mode flag — `--by class|author|custodian` — and copies files (renamed to convention) into `organized/<value>/…`; originals never modified. `class` uses the Phase 3 label; `author` uses the Phase 2 embedded-author column; `custodian` uses a separate name/pattern→custodian mapping table (the collection-source axis, distinct from author). Files with no value for the chosen axis go to an `Unassigned/` bucket, never guessed.
+**QC gate:** Report totals reconcile with manifest (in code). Organized copy is complete — file count matches, hashes match originals (re-hash before/after proves originals untouched). Each `--by` mode buckets correctly and routes blanks to Unassigned. Report passes the client-ready test.
 
 ### Phase 5 — Demo polish + case study final
 README with one-command demo, sample report screenshot, optional Loom walkthrough. Finalize case study via the case-study skill.
