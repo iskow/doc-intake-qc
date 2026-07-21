@@ -29,6 +29,12 @@ Runs the full chain fresh (scan -> classify -> rules -> organize x3), then:
      all three timestamps, the ACL, the owner, and an alternate data stream.
  12. COLLISION PREFLIGHT (4b) — check_collisions() stops a colliding plan and
      passes a clean one.
+ 13. THE QC REPORT (4c) — every figure is recomputed here from the CSVs and
+     compared against the value read back out of the RENDERED HTML, so the gate
+     never trusts report.py's own arithmetic. Plus: required sections all
+     present, the honest-limitation statements still there (their absence is
+     the failure mode), every fired rule explained, and no external asset that
+     would break the report on a client machine with no network.
 
 WHY ACCESSED TIME IS NOT ASSERTED ON THE FIXTURE (measured 2026-07-21):
 reading a file updates its access time, so scan.py destroys the original in
@@ -46,6 +52,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -55,12 +62,14 @@ from pathlib import Path
 from organize import (CUSTODIAN_MAP, MODES, UNASSIGNED, WINDOWS, check_collisions,
                       crossref_path, load_custodian_rules, match_custodian,
                       organize, plan_copies, robocopy_files, safe_folder)
+from rules import RULE_DOCS
 
 ROOT = Path(__file__).resolve().parents[1]
 INTAKE = ROOT / "mock-intake"
 MANIFEST = ROOT / "manifest.csv"
 CLASSIFICATIONS = ROOT / "classifications.csv"
 ORGANIZED = ROOT / "organized"
+REPORT = ROOT / "qc-report.html"
 
 # Files whose custodian is asserted BY NAME rather than by replaying the
 # mapping code. These are the cases that carry the design claims: a specific
@@ -482,6 +491,122 @@ def main() -> int:
     second = tree_state(out_root)
     check(first == second,
           f"idempotent: rerunning --by {mode} reproduces an identical tree ({len(first)} files)")
+
+    # --- 13. THE QC REPORT (4c) ----------------------------------------------
+    # The report is generated LAST, after the pipeline above has rebuilt every
+    # artifact it reads, so it is checked against the same run everything else
+    # was checked against.
+    #
+    # The rule this section follows: never check the report against report.py's
+    # own arithmetic. Every figure is recomputed here from the CSVs, then read
+    # back out of the RENDERED HTML via its data-qc attributes and compared. If
+    # both sides shared a bug they would agree and the check would be worthless,
+    # so the two sides derive their numbers by different routes.
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "report.py")], check=True)
+
+    check(REPORT.is_file(), "report: qc-report.html was generated")
+    doc = REPORT.read_text(encoding="utf-8") if REPORT.is_file() else ""
+
+    def figure(key: str) -> str | None:
+        """Read one data-qc figure back out of the rendered HTML."""
+        hit = re.search(rf'data-qc="{re.escape(key)}">([^<]*)<', doc)
+        return hit.group(1).strip() if hit else None
+
+    exceptions = read_csv_rows(ROOT / "exceptions.csv")
+    flagged = {r["path"] for r in exceptions}
+    sev_counts: dict[str, int] = {}
+    for r in exceptions:
+        sev_counts[r["severity"]] = sev_counts.get(r["severity"], 0) + 1
+    n_unclassified = sum(1 for r in cls if r["label"] == "unclassified")
+    naming = sum(1 for r in exceptions if r["rule_id"] == "NAMING")
+
+    expected_figures = {
+        "total_files": len(manifest),
+        "files_flagged": len(flagged),
+        "files_clean": len(manifest) - len(flagged),
+        "total_exceptions": len(exceptions),
+        "queue_rows": len(exceptions),
+        "sev_high": sev_counts.get("high", 0),
+        "sev_medium": sev_counts.get("medium", 0),
+        "sev_low": sev_counts.get("low", 0),
+        "class_unclassified": n_unclassified,
+        "class_labeled": len(manifest) - n_unclassified,
+        "naming_findings": naming,
+        # 41 files x 3 modes x 2 fields (created, modified)
+        "datefid_total": len(manifest) * len(MODES) * 2,
+        "datefid_ok": len(manifest) * len(MODES) * 2,
+    }
+    for mode in MODES:
+        xref = read_csv_rows(crossref_path(ORGANIZED / f"by-{mode}"))
+        expected_figures[f"files_{mode}"] = len(xref)
+        expected_figures[f"unassigned_{mode}"] = sum(
+            1 for r in xref if r["bucket"] == UNASSIGNED)
+        expected_figures[f"buckets_{mode}"] = len({r["bucket"] for r in xref})
+
+    for key, want in sorted(expected_figures.items()):
+        got = figure(key)
+        check(got == str(want),
+              f"report figure {key}: HTML says {got}, recomputed {want}")
+
+    # Totals must RECONCILE, not merely be present: flagged + clean == received,
+    # and the severity buckets must account for every finding with none left over.
+    check(len(flagged) + (len(manifest) - len(flagged)) == len(manifest),
+          "report: flagged + clean reconciles with files received")
+    check(sum(sev_counts.values()) == len(exceptions),
+          f"report: severities account for all {len(exceptions)} findings, none uncounted")
+
+    # The report's own reconciliation table must be visibly green. A report that
+    # rendered a failed row and shipped anyway would be worse than one that
+    # refused to render.
+    #
+    # Matched on the rendered CELL, not the bare word: the rule id EXT_MISMATCH
+    # contains "MISMATCH", so a substring test fires on a rule name and reports
+    # a failure that isn't there. Caught by this gate on its first run.
+    check('class="bad"' not in doc,
+          "report: its own reconciliation table shows no failed rows")
+    check("DISCREPANCIES FOUND" not in doc,
+          "report: date-fidelity section reports no discrepancies")
+
+    # Absence check: every section PLAN.md and STATUS.md require must exist. A
+    # report missing its limitations section still looks finished.
+    for heading in ("One queue, not two", "Classification",
+                    "Three ways to organize the same set", "Date fidelity",
+                    "Where everything went", "Reconciliation", "Limitations"):
+        check(f">{heading}<" in doc, f"report section present: {heading}")
+
+    # The claims the project is contractually honest about. These are checked as
+    # STRINGS because their absence is the failure mode — a future edit that
+    # tidies away the access-time caveat would make the report over-claim.
+    check("Access times are not preserved" in doc,
+          "report: states plainly that access times are NOT preserved")
+    check("ownership may fall back" in doc,
+          "report: does not claim owner fidelity (states it is unproven)")
+    check("never fixed" in doc and "Renaming is a client" in doc,
+          "report: states the naming gap — findings reported, never remediated")
+    check("crossref-by-" in doc,
+          "report: tells the client the cross-reference exists")
+
+    # Every rule that fired must be explained in the report, in client language.
+    for rule_id in sorted({r["rule_id"] for r in exceptions}):
+        check(rule_id in doc, f"report: explains rule {rule_id}")
+    check(not ({r["rule_id"] for r in exceptions} - set(RULE_DOCS)),
+          "report: no rule fired without a description in rules.RULE_DOCS")
+
+    # The divergence file must appear under three DIFFERENT buckets. This is the
+    # case study's central claim, so the report has to actually show it.
+    div_buckets = {bucket_of[m][DIVERGENCE] for m in MODES}
+    check(len(div_buckets) == 3, "report: divergence file shown in 3 distinct buckets")
+    for value in div_buckets:
+        check(value in doc, f"report: names the divergence bucket {value!r}")
+
+    # Self-contained: it must open on a client machine with no network. Any
+    # external fetch would silently degrade to an unstyled page offline.
+    for pattern, what in ((r'<script', "no <script> tag"),
+                          (r'src\s*=\s*["\']http', "no remote src"),
+                          (r'<link[^>]+href\s*=\s*["\']http', "no remote stylesheet"),
+                          (r'@import', "no CSS @import"),
+                          (r'url\(\s*["\']?http', "no remote url() asset")):
+        check(not re.search(pattern, doc, re.I), f"report is self-contained: {what}")
 
     # --- Report --------------------------------------------------------------
     print()

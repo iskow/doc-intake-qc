@@ -13,8 +13,8 @@ SMEs and legal/ops teams receive messy file dumps — bad names, duplicates, wro
 2. Run inventory scan (`scan.py`) → `manifest.csv`: read-only walk recording each file's true type (from magic bytes, not the extension), size, SHA-256 hash, and dates. Archives are logged as single files, not expanded. The scan never modifies originals — proven in code by a before/after hash of every file.
 3. Run validation rules (`rules.py`) → `exceptions.csv`: nine deterministic checks over the manifest, one row per (file, rule) so a file that trips several issues shows each on its own line. See "What we check" below.
 4. Run AI classification (`classify.py`) → `classifications.csv`: each readable document is labeled **invoice / contract / correspondence / report / other** by a language model running **on the local machine** — no document is uploaded anywhere. Files with no readable text (photos, archives, empty files) are reported `unclassified` rather than guessed. Then rerun `rules.py`, which folds the classification findings into the same `exceptions.csv` the client already reviews. See "What the classifier checks" below.
-5. Generate QC report; review exceptions. _(Phase 4 part 2 — not built yet.)_
-6. Run the organizer (`organize.py --by class|author|custodian`) → `organized/by-<mode>/<value>/<original path>/`: every file copied into a bucketed tree that keeps its original folder structure, with created/modified dates, permissions and alternate data streams intact. **Originals never renamed, moved, or modified.** Files with no value on the chosen axis go to `Unassigned/`, never a guessed bucket. See "Organizing the set" below.
+5. Run the organizer (`organize.py --by class|author|custodian`) → `organized/by-<mode>/<value>/<original path>/`: every file copied into a bucketed tree that keeps its original folder structure, with created/modified dates, permissions and alternate data streams intact. **Originals never renamed, moved, or modified.** Files with no value on the chosen axis go to `Unassigned/`, never a guessed bucket. See "Organizing the set" below.
+6. Generate the QC report (`report.py`) → `qc-report.html`: one self-contained file — no internet, no install, opens in any browser. **Run it last**: it reads all three cross-references, so all three `organize.py` modes must have run first. It reconciles every figure before it will render and refuses to write a report whose numbers disagree. See "The report" below.
 7. Deliver the report + the organized set + the cross-reference CSV, and walk the client through the exceptions queue, the naming gap, and what the copy does and does not preserve.
 
 ## What we check (the nine rules)
@@ -86,10 +86,24 @@ Proven in Phase 4a/4b. One command per axis; run all three and compare, or pick 
 - **"Organized" does not mean "renamed."** Files are copied under their original names on purpose, so every copy traces back to what the client sent. Bad filenames are **reported and not fixed**. If they want remediation, that is a separate, agreed step — and the cross-reference table (now written on every run) is what keeps the change auditable.
 - **Nothing is thrown away or merged.** Every file appears exactly once in every mode, including the junk and the empties. Deleting is always the client's decision.
 
+## The report
+Built in Phase 4c. One file, `qc-report.html`, no external assets — it has to open on a client machine with no network, and the QC gate enforces that (no `<script>`, no remote stylesheet, no `@import`, no remote asset).
+
+What it contains, in order: the headline (how many files need attention), stat tiles by severity, **one queue** holding deterministic *and* AI findings together in severity order, a plain-language gloss of every rule, the classification breakdown, the three-axis comparison with the divergence document, date fidelity, where the cross-reference lives, the reconciliation table, and the limitations.
+
+Rules that hold for any client version:
+- **One queue, not two.** Deterministic findings and classification findings go in the same list. Splitting them produces two reports nobody cross-references, and the client has to work out for themselves that a file appears in both.
+- **The report reconciles itself before it renders.** Flagged + clean must equal received; severities must account for every finding; each mode's cross-reference must hold every file. A mismatch **stops the render** — never a caveat printed next to a wrong total.
+- **Numbers are re-measured, not remembered.** Date fidelity is recomputed against the pre-copy record every run (246 comparisons on this fixture), so the claim cannot outlive the thing it describes.
+- **The limitations section is mandatory and is checked by the build.** Access times not preserved and why; ownership unproven; naming reported-not-fixed; the custodian map is a client input; fixture accuracy does not predict client accuracy. For these, the failure mode is *omission* — so their presence is asserted in the gate, not left to a proofread.
+- **Severity never rides on color alone.** One hue getting darker (it is a tier, not a set of categories), with the word always printed — it has to survive a colorblind reader, a grayscale printout, and a bad projector.
+- **Validate the palette, never eyeball it.** Two of Joel's own brand colors failed on measurement (1.69:1 and 2.44:1) and had to be darkened. Run the dataviz validator before changing any color.
+
 ## Tools
 - See PLAN.md kickoff block (stack). Update here when tools firm up.
 - Phase 2 added **pandas** (grouping the manifest by hash and by normalized name). `pypdf` / `python-docx` / `openpyxl` read embedded document authors.
 - Phase 3 added **Ollama** running `gemma4:12b` locally. No new Python packages — the API call uses the standard library's `urllib`, and text extraction reuses the same three readers Phase 2 already installed.
+- Phase 4 added **nothing**. `organize.py` and `report.py` are pure standard library; the copy engine is Windows' own `robocopy`. The report is hand-written HTML and inline SVG — deliberately no chart library, because a client-facing file that fetches a script from the internet stops working the moment they open it offline.
 
 ## QC checks
 - See PLAN.md phase gates. Promote the ones that survive into permanent SOP checks.

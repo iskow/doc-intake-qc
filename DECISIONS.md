@@ -2,6 +2,41 @@
 
 _Format per PROJECT-STANDARD.md. Newest first._
 
+## 2026-07-21 — The gate checks the RENDERED HTML, not report.py's arithmetic
+**Decision:** `qc_phase4.py` runs `report.py`, then recomputes every headline figure from the CSVs and compares each against the value parsed back out of the generated HTML via `data-qc="<key>"` attributes. It never imports report.py's computed values.
+**Why:** If the gate asked report.py what the totals were, a bug in report.py would be reported to the gate as truth and both sides would agree. The two sides have to reach the same number by different routes or the check is theatre. 21 figures are compared this way (files, flagged, clean, findings, the three severities, class counts, naming count, date-fidelity totals, and per-mode bucket/unassigned/file counts).
+**Proven with a negative test:** inflating the hero figure by one produced **exactly one** failure — `report figure files_flagged: HTML says 26, recomputed 25` — while report.py's own reconciliation still passed 8/8, which is precisely the blind spot this design exists to cover.
+**Rejected:** importing report.py and asserting on its return values (same-source agreement, proves nothing); eyeballing the numbers in a browser (works once, then rots).
+
+## 2026-07-21 — The report's honest limitations are enforced by the gate as string checks
+**Decision:** The gate asserts the report still *contains* its limitation statements — that access times are not preserved, that owner fidelity is unproven, that naming was reported and never fixed, and that the cross-reference exists.
+**Why:** For every other claim, the failure mode is saying something false. For these four the failure mode is **saying nothing** — a later edit that tidies away the access-time caveat leaves a report that reads cleaner and over-claims, and nothing else in the suite would notice. Absence is the bug, so absence is what gets checked.
+**Proven with a negative test:** replacing the access-time caveat with "All timestamps are carried through faithfully" — a plausible-sounding, wrong claim of exactly the kind that would survive a proofread — failed the gate with exit 1 on the one check. Reverted.
+**Rejected:** trusting review to keep the caveats in (they are the first thing a tidying pass removes); a comment in the source asking future editors not to remove them (a comment is not a check).
+
+## 2026-07-21 — Severity is rendered as a one-hue ORDINAL ramp, not a red/amber/green traffic light
+**Decision:** high / medium / low wear `#0E3B4D → #2F6E85 → #7FA8B5`, one teal hue in monotone lightness steps, and every chip prints the severity **word** alongside the color.
+**Why:** Severity is a tier — reordering it changes the meaning — which makes it ordinal, and an ordinal scale reads as one hue getting darker rather than as three unrelated colors. It also keeps the report inside the Tessera palette instead of importing a dashboard-red that belongs to no theme. Color never carries the meaning alone: the word is always printed, so the chart survives colorblind readers, grayscale printing, and a bad projector.
+**Measured, not eyeballed** (dataviz validator, both surfaces): the ramp passes all four ordinal checks — monotone lightness, adjacent ΔL ≥ 0.06, light-end contrast 2.32:1 on Mist / 2.57:1 on white, hue spread 10°.
+**Two brand colors failed their check and were darkened within their own hue:** raw Steel Teal `#598392` as body text is **3.72:1** (needs 4.5) → `#456B7A` at 5.20:1; raw Warm Amber `#D98C3F` as a chart mark is **2.44:1** (needs 3.0) → `#A85F18` at 4.39:1, with `#96540F` for accent text. The brand trio Deep Teal/Steel Teal/Sage was tested as the severity ramp first and **failed outright** — Sage on Mist is 1.69:1 and the three span an 81° hue spread, so they are not one ramp. None of this was visible by eye.
+**Rejected:** red/amber/green (off-palette, and treats an ordinal tier as three categories); the raw brand hexes (measured to fail); color-only chips (fails the moment the report is printed).
+
+## 2026-07-21 — The report re-measures date fidelity at render time instead of quoting the 4b gate
+**Decision:** The date-fidelity section stats every copy in all three modes and compares created and modified against `manifest.csv`'s pre-copy record, computing 246 comparisons (41 files × 3 modes × 2 fields) each time the report runs.
+**Why:** The alternative is printing "4b proved this" — a claim that was true on the day it was written and silently stops being true if anyone re-copies the tree with a lossy tool. A number the artifact recomputes cannot go stale, and `report.py` refuses to render at all if the comparisons do not reconcile. Precision is one second, because that is what the manifest stores; the gate's own check remains the stricter 2ms float comparison.
+**Rejected:** hard-coding "41/41 preserved" (rots silently, which is the exact failure this project keeps eliminating); reading the 4b gate's output file (couples the deliverable to a test artifact a client never receives).
+
+## 2026-07-21 — `qc-report.html` is gitignored; Phase 5 commits a screenshot instead
+**Decision:** The generated report joins `manifest.csv`, `classifications.csv` and `organized/` in `.gitignore`.
+**Why:** Same reasoning as the others — it is regenerated by one command, and it embeds a generation timestamp, so committing it would churn a 34 KB diff on every run.
+**The cost is real and is paid in Phase 5:** a prospective client browsing the repo cannot see the deliverable if it is ignored. Phase 5 already plans a "sample report screenshot" — that screenshot is now a **requirement**, not a nice-to-have, and it is what makes the repo self-demonstrating.
+**Rejected:** committing the HTML (timestamp churn, and a stale committed report would eventually disagree with the code that generates it).
+
+## 2026-07-21 — Rule descriptions live in `rules.py` as data, not in the report template
+**Decision:** `RULE_DOCS`, `SEVERITY_DOCS` and `SEVERITY_ORDER` were added to `rules.py`; `report.py` imports them. The gate asserts every rule_id that fired has an entry.
+**Why:** The wording a client reads has to come from the same file as the rule that produced the finding. Retyping the descriptions into the report template creates two sources of truth that drift on the first rule change, and the drift is invisible — the report keeps rendering, just describing a rule that no longer works that way. With the assertion in the gate, a new rule cannot ship undocumented.
+**Rejected:** a separate `rule-docs.json` (a third file to forget to update); leaving the descriptions in the rules.py docstring (not reachable as data).
+
 ## 2026-07-21 — Phase 4b copy engine is BATCHED robocopy `/COPY:DATSO`, not ctypes
 **Decision:** `organize.py` copies with `robocopy /COPY:DATSO /DCOPY:DAT /R:0 /W:0`, batched **one call per (source folder → destination folder)** rather than one call per file. `shutil.copy2` is demoted to the non-Windows fallback, which prints a loud warning that the output is not metadata-faithful.
 **Why:** Joel's answer to the open question — preserve the lot, aim for no metadata loss. That settles it against ctypes: `SetFileTime` moves timestamps and nothing else, so ACLs, owner and alternate data streams would still be dropped. Only robocopy carries all four.
@@ -181,6 +216,8 @@ _Superseded in part by the entry above — the limitation is now being fixed in 
 
 ## Assumptions & risks
 - [ASSUMPTION: open] All client data is mocked — no real client files anywhere in this project.
+- [RISK: open] **The report's brand fonts are not embedded.** Self-contained beats on-brand here: the joel-brand skill loads Space Grotesk / Inter / JetBrains Mono from Google Fonts, but the report must open on a client machine with no network, and the gate now *enforces* no remote assets. The font stacks name the brand faces first and fall back to Segoe UI / Consolas, so on Joel's PC and most Windows clients the report renders in the fallback, not the brand face. The hierarchy and the palette carry the brand instead. If a client-facing version ever needs the real faces, the fix is base64-embedding the woff2 subsets — roughly 60–100 KB — not a `<link>`, which would fail the gate for good reason.
+- [RISK: open] Report layout is verified on Chrome at 1100px wide and in print CSS. It has **not** been checked in Outlook's renderer, on mobile, or in a PDF export path. A client who prints to PDF from a different browser may get different pagination.
 - [ASSUMPTION: open] `custodian-map.csv` is **fictional**, written to demonstrate the mechanism. Its custodians, folders, and the one non-custodial system source are invented for the fixture. On a real engagement this table is supplied or confirmed **by the client** — it is the collection log, and the tool has no way to validate it. A wrong map produces confidently wrong buckets, so agreeing it in writing is a scoping step, not a technical one.
 - [RISK: open] The organized copy inherits every bad filename (see the copy-as-is decision above). A client who reads "organized" as "cleaned up" will be surprised. The Phase 4 report must state that naming remediation was reported, not performed.
 - [ASSUMPTION: open] Free-tier tools suffice for demo scale; paid tiers noted as information only.

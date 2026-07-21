@@ -73,6 +73,51 @@ TODAY = date.today()
 # Output columns of exceptions.csv, defined once so header and rows stay locked.
 FIELDS = ["path", "name", "rule_id", "severity", "detail"]
 
+# Client-facing wording for the severity tiers described above. Kept as data so
+# the Phase 4c report states the same definition the engine applies, instead of
+# a second sentence written months later that drifts from it.
+SEVERITY_DOCS = {
+    "high": "Data integrity — could corrupt the review set if it ships unresolved.",
+    "medium": "Needs a human decision before the set moves forward.",
+    "low": "Housekeeping — worth fixing, but nothing downstream breaks.",
+}
+
+# Severity order, worst first. The report sorts and ramps against this, so the
+# ordering lives with the rules rather than being re-declared in the renderer.
+SEVERITY_ORDER = ("high", "medium", "low")
+
+# One client-readable line per rule: what it catches, and why a reviewer cares.
+# The docstring above explains these to a developer; this explains them to the
+# person receiving the report. Every rule_id the engine can emit MUST have an
+# entry — qc_phase4.py asserts it, so a new rule cannot ship undocumented.
+RULE_DOCS = {
+    "EXACT_DUP": "Byte-for-byte identical to another file in the set. "
+                 "Reviewing both wastes time and inflates volume counts.",
+    "NEAR_DUP_NAME": "Shares a base name with a different file, so the two are "
+                     "versions of each other. Which one is authoritative is a "
+                     "question only the client can answer.",
+    "NAMING": "Breaks the naming convention — spaces, ad-hoc status words, or a "
+              "scanner default. Reported, never renamed (see limitations).",
+    "EXT_MISMATCH": "The extension disagrees with the file's actual content. "
+                    "Tools that trust the extension will mis-handle or skip it.",
+    "ZERO_BYTE": "Empty file. Almost always a failed save or an interrupted "
+                 "transfer — the real document may still be missing.",
+    "DATE_ANOMALY": "Modified date is before 2000 or in the future, so any date "
+                    "filter run over this set will place it wrongly.",
+    "JUNK_FILE": "Operating-system or application litter that should not be part "
+                 "of a production set.",
+    "ARCHIVE": "A container whose contents stay invisible until it is expanded. "
+               "The set cannot be called complete until it is opened.",
+    "DEEP_NESTING": "Buried more than two folders deep, where it is easy to miss "
+                    "in a manual review.",
+    "UNCLASSIFIED": "No label could be assigned — the file carries no readable "
+                    "text. Routed for manual review rather than guessed.",
+    "CLASS_CONFLICT": "The document's content and the folder it was filed in "
+                      "disagree. One of the two is wrong.",
+    "LOW_CONFIDENCE": "The classifier was unsure enough to warrant a human look "
+                      "before the label is trusted.",
+}
+
 # --- Lookup tables ---------------------------------------------------------
 
 # What true_type (magic-byte class from scan.py) each extension should map to.
