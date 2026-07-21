@@ -1,6 +1,10 @@
 # SOP-DRAFT.md — Document Intake QC Agent
 
-_Draft — grows as the build makes the process real. Final pass uses the sop-builder skill._
+> **Superseded for execution, kept as the build record (2026-07-22).** The finished, execution-ordered SOP is **`sops/internal/sop-document-intake-qc.md`** in the Board of Advisors workspace (also `.html` and `.pdf`). Use that one to run an engagement — it has the prerequisites, the flowchart, warnings at the hazardous steps, an escalation table, and a quality checklist.
+>
+> This file stays as the **build record**: it is ordered by what each phase learned, not by what an executor does next, and it is where the process knowledge accumulated. Keep appending here during future build phases, then regenerate the real SOP. Do not treat this file as the deliverable.
+
+_Draft — grows as the build makes the process real. Final pass used the sop-builder skill (Phase 5b)._
 
 ## Purpose
 The repeatable service process behind this build — what Joel would run for a paying client.

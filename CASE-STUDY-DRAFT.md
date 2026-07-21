@@ -1,6 +1,10 @@
 # CASE-STUDY-DRAFT.md — Document Intake QC Agent
 
-_Running draft — update at every phase close (PROJECT-STANDARD.md exit ritual). Final pass uses the case-study skill → portfolio/._
+> **Finalized 2026-07-22 (Phase 5b).** The published case study is **`portfolio/doc-intake-qc.md`** in the Board of Advisors workspace — one page, qc-gate passed 8/8. This file stays as the running draft and the source material.
+>
+> The qc-gate caught **three over-claims in this draft** that were corrected in the final version and are worth not reintroducing here: (1) "the gate was broken on purpose, five times" is fine, but *"every gate"* is not — Phases 0 and 1 have no recorded negative test; (2) `copy2` loses **creation** dates while preserving modified — do not write that it "corrupts dates"; (3) **three** brand colors failed contrast (Sage 1.69, Steel Teal 3.72, Warm Amber 2.44), not two.
+
+_Running draft — update at every phase close (PROJECT-STANDARD.md exit ritual). Final pass used the case-study skill → portfolio/._
 
 ## Working title
 Document Intake QC Agent
