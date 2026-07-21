@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 4 — **4a, 4b and 4c all complete. Phase 4 is DONE.** Gate passed (PASS 131 / FAIL 0), proven with three fresh negative tests. **Not yet committed or pushed — that plus Joel's approval is the first thing next session.** Next build phase is **Phase 5** (README one-command demo + case study final).
+**Current phase:** Phase 4 — **4a, 4b and 4c all complete. Phase 4 is DONE, committed and pushed** (`05180b5`, `3543101..05180b5`). Gate passed (PASS 131 / FAIL 0), proven with three fresh negative tests, re-run green on the working tree immediately before the push. Nothing outstanding. Next build phase is **Phase 5** (README one-command demo + case study final).
 **Last updated:** 2026-07-21 (Phase 4c: the HTML QC report, validated palette, gate reads the rendered HTML)
 
 ## Done
@@ -67,8 +67,7 @@
   - **No regression:** Phases 0/1/2/3 re-run green (39/0, 13/0, 22/0, 17/0). No new dependencies — `csv`, `html`, `datetime`, `pathlib` from the standard library.
 
 ## Next
-**Phase 5 — demo polish + case study final. Not started.**
-**Do this first, before any Phase 5 work:** Phase 4c is complete and green but **uncommitted**. Re-run `py scripts/qc_phase4.py` on the working tree to confirm 131/0, then commit and push (Phase 4c: report.py, the rules.py docs addition, the qc_phase4.py report checks, .gitignore, and the four doc files).
+**Phase 5 — demo polish + case study final. Not started.** Phase 4 is fully pushed; nothing outstanding to clean up first.
 
 Phase 5 scope:
 - README with a one-command demo, following the chain in order: `scan.py` → `classify.py` → `rules.py` → `organize.py --by <mode>` → `report.py`. **`report.py` must run last** — it reads all three cross-references, so all three modes have to have been organized first.
