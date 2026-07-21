@@ -1,0 +1,40 @@
+{
+  "captured_from": "qc-report.html",
+  "full": {
+    "file": "qc-report-full.png",
+    "size": [
+      1100,
+      7360
+    ]
+  },
+  "hero": {
+    "file": "qc-report-hero.png",
+    "size": [
+      1100,
+      952
+    ]
+  },
+  "figures": {
+    "total_files": "41",
+    "files_flagged": "25",
+    "files_clean": "16",
+    "total_exceptions": "39",
+    "sev_high": "11",
+    "sev_medium": "16",
+    "sev_low": "12",
+    "class_labeled": "32",
+    "class_unclassified": "9",
+    "naming_findings": "9",
+    "datefid_total": "246",
+    "datefid_ok": "246",
+    "files_class": "41",
+    "files_author": "41",
+    "files_custodian": "41",
+    "unassigned_class": "9",
+    "unassigned_author": "19",
+    "unassigned_custodian": "9",
+    "buckets_class": "6",
+    "buckets_author": "6",
+    "buckets_custodian": "8"
+  }
+}

@@ -42,5 +42,12 @@ Generate the deliverable: an HTML/MD QC report (summary stats, exceptions by sev
 **QC gate:** Report totals reconcile with manifest (in code). Organized copy is complete — file count matches, hashes match originals (re-hash before/after proves originals untouched). Each `--by` mode buckets correctly and routes blanks to Unassigned. Report passes the client-ready test.
 
 ### Phase 5 — Demo polish + case study final
-README with one-command demo, sample report screenshot, optional Loom walkthrough. Finalize case study via the case-study skill.
-**QC gate:** Fresh-eyes run: follow the README from scratch and it works. qc-gate skill pass on the case study. Zero typos.
+**AMENDED 2026-07-21 — split into 5a / 5b** at Joel's call, for the same reason Phase 4 was split: the runnable demo and the portfolio close are separate deliverables with separate consumers, and each earns a full sitting.
+
+- **5a — the one-command demo.** ✅ DONE, gate 85/0. `scripts/run_demo.py` runs the chain in the one order that works, holding it in code as `STEPS` so the README can be checked against it rather than trusted. `README.md` leads with the deliverable and carries a results table the gate recomputes from the live pipeline. `scripts/capture_screenshots.py` makes the screenshot reproducible, and `docs/report-snapshot.json` pins the figures so a stale image fails the build. See DECISIONS 2026-07-21.
+  **QC gate (met):** the demo runs from a cleared tree and produces every declared artifact; the intake is unchanged; every documented command, path, flag and figure in the README is checked against the code; the committed screenshots are proven current; three negative tests, each isolating one claim.
+
+- **5b — the portfolio close.** Not started. Finalize the case study via the case-study skill → `portfolio/doc-intake-qc.md`; qc-gate skill pass; `SOP-DRAFT.md` final pass. Optional Loom walkthrough — Joel records that himself.
+  **QC gate:** qc-gate skill pass on the case study. Every number in it traceable to a gate result in STATUS. Zero typos.
+
+**Original Phase 5 gate, for the record:** Fresh-eyes run: follow the README from scratch and it works. qc-gate skill pass on the case study. Zero typos. The fresh-eyes clause is now automated — `qc_phase5.py` deletes every generated artifact and runs the documented command.

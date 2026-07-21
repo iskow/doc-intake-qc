@@ -17,6 +17,10 @@ SMEs and legal/ops teams receive messy file dumps — bad names, duplicates, wro
 6. Generate the QC report (`report.py`) → `qc-report.html`: one self-contained file — no internet, no install, opens in any browser. **Run it last**: it reads all three cross-references, so all three `organize.py` modes must have run first. It reconciles every figure before it will render and refuses to write a report whose numbers disagree. See "The report" below.
 7. Deliver the report + the organized set + the cross-reference CSV, and walk the client through the exceptions queue, the naming gap, and what the copy does and does not preserve.
 
+**Running it: one command.** `py scripts/run_demo.py` runs steps 2–6 in the only order that works and stops at the first failure. Two things worth knowing before running it on a client's set:
+- **`report.py` must run last.** It reads all three cross-references. The runner enforces this and `report.py` refuses to render without them, so the order cannot be got wrong by accident.
+- **`--no-ai` runs the deterministic half** — the rules engine plus the author and custodian axes — on a machine with no model installed. Measured on the fixture: 30 findings across 23 files in 1.4 seconds. Useful when scoping a client who will not allow any model on their data, or before a model is set up.
+
 ## What we check (the nine rules)
 Proven in Phase 2. Severity reflects what a missed flag would cost: **high** = data integrity (the review set is wrong), **medium** = needs a human decision before proceeding, **low** = housekeeping.
 
