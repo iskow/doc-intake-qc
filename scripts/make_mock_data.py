@@ -38,8 +38,33 @@ from reportlab.pdfgen import canvas
 ROOT = Path(__file__).resolve().parents[1]
 INTAKE = ROOT / "mock-intake"
 
+# --- document authors (embedded metadata; a separate axis from custodian) --
+# The "author" is who created a file, stored in the document's own properties
+# (PDF /Author, DOCX/XLSX core.xml creator). It is DELIBERATELY distinct from:
+#   - the party named in the filename (e.g. "AcmeSupply"), and
+#   - the custodian (the collection source — a Phase 4 mapping concept).
+# One file below is a planted divergence: an Acme-named contract authored by
+# Meridian staff, so the demo can PROVE author != party != custodian. Files
+# whose format can't carry an author (txt/csv/png/zip/legacy .doc), scanned
+# PDFs, and empty files are left unassigned on purpose.
+AUTH_ACME = "Jorge Reyes"       # Acme Supply Co. contact
+AUTH_BRIGHT = "Alia Tan"        # BrightWorks Consulting contact
+AUTH_DELTA = "Sam Ocampo"       # Delta Freight Ltd. contact
+AUTH_INTAKE = "Dana Cruz"       # Meridian Legal — intake / contracts
+AUTH_OPS = "M. Villanueva"      # Meridian Legal — operations / reports
+
 # --- the answer key, built as we go ----------------------------------------
 seeded: list[dict] = []
+
+# path (relative, posix) -> embedded author. Populated by the builders at the
+# moment each file is written, so the key can't drift from what's embedded.
+authors: dict[str, str] = {}
+
+
+def _record_author(path: Path, author: str) -> None:
+    """Note a file's embedded author for the answer key, keyed by the same
+    relative posix path that seed() and the manifest use."""
+    authors[path.relative_to(ROOT).as_posix()] = author
 
 
 def seed(error_type: str, note: str, *paths: Path) -> None:
@@ -56,9 +81,15 @@ def seed(error_type: str, note: str, *paths: Path) -> None:
 
 
 # --- file builders ---------------------------------------------------------
-def make_pdf(path: Path, title: str, lines: list[str]) -> None:
+def make_pdf(path: Path, title: str, lines: list[str], author: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(path), pagesize=LETTER)
+    if author:
+        c.setAuthor(author)          # writes /Author into the PDF info dict
+        _record_author(path, author)
+    else:
+        c.setAuthor("")              # reportlab defaults /Author to 'anonymous';
+        #                              blank it so unauthored PDFs read back as None
     y = 750
     c.setFont("Helvetica-Bold", 14)
     c.drawString(72, y, title)
@@ -69,18 +100,24 @@ def make_pdf(path: Path, title: str, lines: list[str]) -> None:
     c.save()
 
 
-def make_docx(path: Path, title: str, paragraphs: list[str]) -> None:
+def make_docx(path: Path, title: str, paragraphs: list[str], author: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     doc = Document()
+    if author:
+        doc.core_properties.author = author   # embedded author (docProps/core.xml)
+        _record_author(path, author)
     doc.add_heading(title, level=1)
     for p in paragraphs:
         doc.add_paragraph(p)
     doc.save(str(path))
 
 
-def make_xlsx(path: Path, headers: list[str], rows: list[list]) -> None:
+def make_xlsx(path: Path, headers: list[str], rows: list[list], author: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
+    if author:
+        wb.properties.creator = author        # embedded author (docProps/core.xml)
+        _record_author(path, author)
     ws = wb.active
     ws.append(headers)
     for r in rows:
@@ -100,9 +137,14 @@ def make_text(path: Path, text: str) -> None:
 
 def dupe(src: Path, dst: Path) -> None:
     """Exact duplicate: copy2 preserves content bytes AND the modified time,
-    so the pair is hash-identical — exactly what real copy-paste dupes look like."""
+    so the pair is hash-identical — exactly what real copy-paste dupes look like.
+    The embedded author lives inside those bytes, so the copy inherits it too;
+    we mirror that in the answer key."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
+    src_rel = src.relative_to(ROOT).as_posix()
+    if src_rel in authors:
+        _record_author(dst, authors[src_rel])
 
 
 def set_mtime(path: Path, when: datetime) -> None:
@@ -136,62 +178,80 @@ def main() -> None:
     pho = INTAKE / "Site Photos"
 
     # ------------------------------------------------------------ Invoices
+    # Vendor invoices carry the vendor contact as author; the internal batch
+    # spreadsheet is authored by Meridian (author != any single party).
     make_pdf(inv / "INV-2026-001_AcmeSupply.pdf", "INVOICE",
-             invoice_lines("INV-2026-001", "Acme Supply Co.", "$1,250.00", "2026-03-02"))
+             invoice_lines("INV-2026-001", "Acme Supply Co.", "$1,250.00", "2026-03-02"),
+             author=AUTH_ACME)
     make_pdf(inv / "INV-2026-002_AcmeSupply.pdf", "INVOICE",
-             invoice_lines("INV-2026-002", "Acme Supply Co.", "$980.50", "2026-03-19"))
+             invoice_lines("INV-2026-002", "Acme Supply Co.", "$980.50", "2026-03-19"),
+             author=AUTH_ACME)
     make_pdf(inv / "INV-2026-003_BrightWorks.pdf", "INVOICE",
-             invoice_lines("INV-2026-003", "BrightWorks Consulting", "$4,200.00", "2026-03-28"))
+             invoice_lines("INV-2026-003", "BrightWorks Consulting", "$4,200.00", "2026-03-28"),
+             author=AUTH_BRIGHT)
 
     p = inv / "inv 2026-004 brightworks FINAL.pdf"
     make_pdf(p, "INVOICE",
-             invoice_lines("INV-2026-004", "BrightWorks Consulting", "$1,875.00", "2026-04-06"))
+             invoice_lines("INV-2026-004", "BrightWorks Consulting", "$1,875.00", "2026-04-06"),
+             author=AUTH_BRIGHT)
     seed("naming-violation", "Spaces, lowercase, and 'FINAL' suffix — breaks INV-YYYY-NNN_Vendor convention.", p)
 
     src = inv / "INV-2026-005_AcmeSupply.pdf"
     make_pdf(src, "INVOICE",
-             invoice_lines("INV-2026-005", "Acme Supply Co.", "$2,310.00", "2026-04-15"))
+             invoice_lines("INV-2026-005", "Acme Supply Co.", "$2,310.00", "2026-04-15"),
+             author=AUTH_ACME)
     d = inv / "INV-2026-005_AcmeSupply (1).pdf"
     dupe(src, d)
     seed("exact-duplicate", "Copy-paste artifact — identical bytes, ' (1)' name.", src, d)
 
     p = inv / "INV-2026-006_DeltaFreight.PDF"
     make_pdf(p, "INVOICE",
-             invoice_lines("INV-2026-006", "Delta Freight Ltd.", "$640.00", "2026-04-22"))
+             invoice_lines("INV-2026-006", "Delta Freight Ltd.", "$640.00", "2026-04-22"),
+             author=AUTH_DELTA)
     seed("naming-violation", "Uppercase '.PDF' extension — inconsistent with the rest of the set.", p)
 
     make_pdf(inv / "INV-2026-007_DeltaFreight.pdf", "INVOICE",
-             invoice_lines("INV-2026-007", "Delta Freight Ltd.", "$1,120.00", "2026-05-01"))
+             invoice_lines("INV-2026-007", "Delta Freight Ltd.", "$1,120.00", "2026-05-01"),
+             author=AUTH_DELTA)
     make_pdf(inv / "INV-2026-008_BrightWorks.pdf", "INVOICE",
-             invoice_lines("INV-2026-008", "BrightWorks Consulting", "$3,050.00", "2026-05-09"))
+             invoice_lines("INV-2026-008", "BrightWorks Consulting", "$3,050.00", "2026-05-09"),
+             author=AUTH_BRIGHT)
     make_pdf(inv / "INV-2026-009_AcmeSupply.pdf", "INVOICE",
-             invoice_lines("INV-2026-009", "Acme Supply Co.", "$775.25", "2026-05-20"))
+             invoice_lines("INV-2026-009", "Acme Supply Co.", "$775.25", "2026-05-20"),
+             author=AUTH_ACME)
     make_xlsx(inv / "invoice_batch_Q2.xlsx",
               ["invoice_no", "vendor", "date", "amount_usd"],
               [["INV-2026-004", "BrightWorks Consulting", "2026-04-06", 1875.00],
                ["INV-2026-005", "Acme Supply Co.", "2026-04-15", 2310.00],
                ["INV-2026-006", "Delta Freight Ltd.", "2026-04-22", 640.00],
-               ["INV-2026-007", "Delta Freight Ltd.", "2026-05-01", 1120.00]])
+               ["INV-2026-007", "Delta Freight Ltd.", "2026-05-01", 1120.00]],
+              author=AUTH_INTAKE)
 
     # ------------------------------------------------------------ Contracts
+    # DIVERGENCE FILE: filename party = Acme, but Meridian drafted it, so the
+    # embedded author is Dana Cruz (Meridian). This one file proves the demo's
+    # whole point — author != party != custodian.
     make_docx(ctr / "CTR-2026-01_ServiceAgreement_AcmeSupply.docx", "SERVICE AGREEMENT",
               ["This Service Agreement (the 'Agreement') is entered into as of March 1, 2026, "
                "by and between Meridian Legal Services LLC and Acme Supply Co.",
                "1. Services. The Vendor shall provide office supply and logistics services.",
                "2. Term. This Agreement runs for twelve (12) months from the effective date.",
-               "3. Fees. Fees are payable net 30 from receipt of a valid invoice."])
+               "3. Fees. Fees are payable net 30 from receipt of a valid invoice."],
+              author=AUTH_INTAKE)
     src = ctr / "CTR-2026-02_NDA_BrightWorks.docx"
     make_docx(src, "MUTUAL NON-DISCLOSURE AGREEMENT",
               ["This Mutual Non-Disclosure Agreement is made between Meridian Legal Services LLC "
                "and BrightWorks Consulting, effective March 10, 2026.",
                "Each party agrees to hold the other's Confidential Information in strict confidence.",
-               "Term: three (3) years from the effective date."])
+               "Term: three (3) years from the effective date."],
+              author=AUTH_INTAKE)
     p = ctr / "CTR-2026-02_NDA_BrightWorks_v2.docx"
     make_docx(p, "MUTUAL NON-DISCLOSURE AGREEMENT (REV. 2)",
               ["This Mutual Non-Disclosure Agreement is made between Meridian Legal Services LLC "
                "and BrightWorks Consulting, effective March 10, 2026.",
                "Each party agrees to hold the other's Confidential Information in strict confidence.",
-               "Term: five (5) years from the effective date. Adds clause 4 (residuals)."])
+               "Term: five (5) years from the effective date. Adds clause 4 (residuals)."],
+              author=AUTH_INTAKE)
     seed("near-duplicate-name", "'_v2' variant beside the original — same base name, different content. "
          "Which version is authoritative?", src, p)
 
@@ -199,13 +259,15 @@ def main() -> None:
     make_docx(p, "CONSULTING CONTRACT",
               ["Consulting contract between Meridian Legal Services LLC and Delta Freight Ltd.",
                "Scope: quarterly logistics review and reporting.",
-               "Fee: $2,000 per quarter, invoiced in arrears."])
+               "Fee: $2,000 per quarter, invoiced in arrears."],
+              author=AUTH_INTAKE)
     seed("naming-violation", "'FINAL FINAL (use this one)' — no ID, no convention, ambiguous authority.", p)
 
     make_pdf(ctr / "CTR-2026-03_MSA_DeltaFreight.pdf", "MASTER SERVICE AGREEMENT",
              ["Master Service Agreement between Meridian Legal Services LLC and Delta Freight Ltd.",
               "Effective Date: April 1, 2026.",
-              "Governs all statements of work executed under this MSA."])
+              "Governs all statements of work executed under this MSA."],
+             author=AUTH_INTAKE)
 
     p = ctr / "scan_001.pdf"
     make_pdf(p, "AMENDMENT NO. 1",
@@ -215,6 +277,8 @@ def main() -> None:
     seed("naming-violation", "'scan_001.pdf' — uninformative scanner-default name; content is a contract amendment.", p)
 
     # ------------------------------------------------------- Correspondence
+    # Emails rendered to PDF: most have no author (exported/printed), one
+    # carries the sender — a realistic mix that feeds the Unassigned bucket.
     make_pdf(cor / "2026-03-14_AcmeSupply_kickoff.pdf", "EMAIL",
              ["From: j.reyes@acmesupply.example", "To: intake@meridianlegal.example",
               "Date: 2026-03-14", "Subject: Kickoff — supply agreement onboarding",
@@ -226,7 +290,8 @@ def main() -> None:
     make_pdf(cor / "2026-04-02_BrightWorks_scope_change.pdf", "EMAIL",
              ["From: a.tan@brightworks.example", "To: intake@meridianlegal.example",
               "Date: 2026-04-02", "Subject: Scope change request — Q2 engagement",
-              "Requesting an additional workshop in May; revised SOW to follow."])
+              "Requesting an additional workshop in May; revised SOW to follow."],
+             author=AUTH_BRIGHT)
 
     p = cor / "RE RE FW Important!!.pdf"
     make_pdf(p, "EMAIL",
@@ -246,17 +311,20 @@ def main() -> None:
              ["Prepared by: Meridian Legal Services LLC — Operations",
               "Period: January-March 2026",
               "Intake volume up 12% quarter over quarter.",
-              "Average processing turnaround: 2.4 business days."])
+              "Average processing turnaround: 2.4 business days."],
+             author=AUTH_OPS)
     d = rpt / "Copy of RPT-2026-Q1_Operations.pdf"
     dupe(src, d)
     seed("exact-duplicate", "'Copy of' artifact — identical bytes under a different name.", src, d)
 
     make_docx(rpt / "RPT-2026-Q2_Operations_DRAFT.docx", "Q2 2026 OPERATIONS REPORT (DRAFT)",
               ["Period: April-June 2026 (draft — figures not final).",
-               "Intake volume tracking flat; two vendor onboardings completed."])
+               "Intake volume tracking flat; two vendor onboardings completed."],
+              author=AUTH_OPS)
     make_xlsx(rpt / "RPT-2026-Q1_Financials.xlsx",
               ["month", "revenue_usd", "expenses_usd"],
-              [["2026-01", 42000, 31000], ["2026-02", 45500, 32200], ["2026-03", 47800, 33900]])
+              [["2026-01", 42000, 31000], ["2026-02", 45500, 32200], ["2026-03", 47800, 33900]],
+              author=AUTH_OPS)
 
     # ---------------------------------------------------------- Site Photos
     make_png(pho / "site_photo_01.png", (70, 130, 180))
@@ -322,17 +390,22 @@ def main() -> None:
 
     p = deep / "RPT-2031_forecast.pdf"
     make_pdf(p, "FORECAST 2031",
-             ["Long-range forecast document.", "Placeholder projections for 2031."])
+             ["Long-range forecast document.", "Placeholder projections for 2031."],
+             author=AUTH_OPS)
     set_mtime(p, datetime(2031, 1, 15, 12, 0))
     seed("date-anomaly", "Modified date 2031-01-15 — in the future; clock error or metadata tampering.", p)
 
     # ------------------------------------------------------- Write answer key
     all_files = sorted(q.relative_to(ROOT).as_posix() for q in INTAKE.rglob("*") if q.is_file())
+    # Full path -> author map, including None for files with no embedded author
+    # (Unassigned). Ground truth for Phase 2's author-extraction check.
+    authors_map = {f: authors.get(f) for f in all_files}
     key = {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "file_count": len(all_files),
         "files": all_files,
         "seeded_errors": seeded,
+        "authors": authors_map,
     }
     (ROOT / "seeded-errors.json").write_text(json.dumps(key, indent=2), encoding="utf-8")
 
@@ -364,11 +437,32 @@ def main() -> None:
                 lines.append(f"- `{path}`")
             lines.append(f"  - {e['note']}")
         lines.append("")
+
+    # Document authors are metadata, not errors — their own section.
+    named = {f: a for f, a in authors_map.items() if a}
+    lines.append(f"## document-authors ({len(named)} of {len(all_files)} files)")
+    lines.append("")
+    lines.append("_Embedded author metadata — a SEPARATE axis from custodian (collection "
+                 "source) and from the party in the filename. Full path->author map "
+                 "(including nulls) is in seeded-errors.json._")
+    lines.append("")
+    for f in sorted(named):
+        lines.append(f"- `{f}` -> {named[f]}")
+    lines.append("")
+    lines.append(f"_{len(all_files) - len(named)} files are Unassigned — their format "
+                 "can't carry an author (txt/csv/png/zip/legacy .doc), they're scanned, "
+                 "or they're empty._")
+    lines.append("- **Divergence check:** `mock-intake/Contracts/CTR-2026-01_ServiceAgreement_"
+                 "AcmeSupply.docx` — filename party = Acme, embedded author = Dana Cruz "
+                 "(Meridian). Proof that author != party != custodian.")
+    lines.append("")
     (ROOT / "seeded-errors.md").write_text("\n".join(lines), encoding="utf-8")
 
     print(f"Fixture built: {key['file_count']} files in {INTAKE.name}/ (+2 inside the zip)")
     print(f"Seeded errors: {len(seeded)} across {len(by_type)} types: "
           + ", ".join(f"{t}={len(v)}" for t, v in sorted(by_type.items())))
+    print(f"Authors embedded: {len(named)} files "
+          f"({len(all_files) - len(named)} unassigned).")
 
 
 if __name__ == "__main__":

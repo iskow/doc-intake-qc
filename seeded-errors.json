@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-19T23:09:39",
+  "generated": "2026-07-20T11:10:34",
   "file_count": 41,
   "files": [
     "mock-intake/Contracts/CTR-2026-01_ServiceAgreement_AcmeSupply.docx",
@@ -196,5 +196,48 @@
       ],
       "note": "Modified date 2031-01-15 \u2014 in the future; clock error or metadata tampering."
     }
-  ]
+  ],
+  "authors": {
+    "mock-intake/Contracts/CTR-2026-01_ServiceAgreement_AcmeSupply.docx": "Dana Cruz",
+    "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks.docx": "Dana Cruz",
+    "mock-intake/Contracts/CTR-2026-02_NDA_BrightWorks_v2.docx": "Dana Cruz",
+    "mock-intake/Contracts/CTR-2026-03_MSA_DeltaFreight.pdf": "Dana Cruz",
+    "mock-intake/Contracts/Contract FINAL FINAL (use this one).docx": "Dana Cruz",
+    "mock-intake/Contracts/scan_001.pdf": null,
+    "mock-intake/Correspondence/2026-03-14_AcmeSupply_kickoff.pdf": null,
+    "mock-intake/Correspondence/2026-03-15_AcmeSupply_followup.pdf": null,
+    "mock-intake/Correspondence/2026-04-02_BrightWorks_scope_change.pdf": "Alia Tan",
+    "mock-intake/Correspondence/RE RE FW Important!!.pdf": null,
+    "mock-intake/Correspondence/memo_draft.docx": null,
+    "mock-intake/Invoices/INV-2026-001_AcmeSupply.pdf": "Jorge Reyes",
+    "mock-intake/Invoices/INV-2026-002_AcmeSupply.pdf": "Jorge Reyes",
+    "mock-intake/Invoices/INV-2026-003_BrightWorks.pdf": "Alia Tan",
+    "mock-intake/Invoices/INV-2026-005_AcmeSupply (1).pdf": "Jorge Reyes",
+    "mock-intake/Invoices/INV-2026-005_AcmeSupply.pdf": "Jorge Reyes",
+    "mock-intake/Invoices/INV-2026-006_DeltaFreight.PDF": "Sam Ocampo",
+    "mock-intake/Invoices/INV-2026-007_DeltaFreight.pdf": "Sam Ocampo",
+    "mock-intake/Invoices/INV-2026-008_BrightWorks.pdf": "Alia Tan",
+    "mock-intake/Invoices/INV-2026-009_AcmeSupply.pdf": "Jorge Reyes",
+    "mock-intake/Invoices/inv 2026-004 brightworks FINAL.pdf": "Alia Tan",
+    "mock-intake/Invoices/invoice_batch_Q2.xlsx": "Dana Cruz",
+    "mock-intake/Old Files/2019 archive/deep/nested/RPT-2031_forecast.pdf": "M. Villanueva",
+    "mock-intake/Old Files/2019 archive/deep/nested/legacy_notes.doc": null,
+    "mock-intake/Old Files/2019 archive/deep/nested/misc_scan_0042.pdf": null,
+    "mock-intake/Reports/Copy of RPT-2026-Q1_Operations.pdf": "M. Villanueva",
+    "mock-intake/Reports/RPT-2026-Q1_Financials.xlsx": "M. Villanueva",
+    "mock-intake/Reports/RPT-2026-Q1_Operations.pdf": "M. Villanueva",
+    "mock-intake/Reports/RPT-2026-Q2_Operations_DRAFT.docx": "M. Villanueva",
+    "mock-intake/Site Photos/IMG_3847.jpg": null,
+    "mock-intake/Site Photos/site_photo_01.png": null,
+    "mock-intake/Site Photos/site_photo_02 - Copy.png": null,
+    "mock-intake/Site Photos/site_photo_02.png": null,
+    "mock-intake/Site Photos/site_photo_03.png": null,
+    "mock-intake/Thumbs.db": null,
+    "mock-intake/data_export.csv": null,
+    "mock-intake/empty_placeholder.pdf": null,
+    "mock-intake/notes.txt": null,
+    "mock-intake/old_backup.zip": null,
+    "mock-intake/report_final.pdf": null,
+    "mock-intake/~$ntract_temp.docx": null
+  }
 }
