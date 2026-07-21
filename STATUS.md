@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 3 — COMPLETE, gate passed (PASS 17 / FAIL 0). **Not yet committed or pushed** — awaiting Joel's phase approval.
+**Current phase:** Phase 3 — COMPLETE, gate passed (PASS 17 / FAIL 0), approved by Joel and **pushed** (`d66ff3d`, `2e25917..d66ff3d`). Phase 4 not started — run it in a fresh session.
 **Last updated:** 2026-07-21 (Phase 3 built and gated: local classification with `gemma4:12b`, 32/32 accuracy)
 
 ## Done
