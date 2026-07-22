@@ -42,6 +42,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from intake import strip_intake_prefix
 from organize import MODES, UNASSIGNED, crossref_path
 from rules import RULE_DOCS, SEVERITY_DOCS, SEVERITY_ORDER
 
@@ -201,9 +202,15 @@ def bucket_summary(mode: str) -> dict:
 
 def folder_label(path: str) -> str:
     """The file's folder, with the intake root stripped — a reader cares where
-    it sat inside the collection, not that everything starts with mock-intake/.
-    Files at the top level say so rather than showing a bare dot."""
-    rel = Path(path).parent.as_posix().replace("mock-intake", "").strip("/")
+    it sat inside the collection, not what the collection folder is called.
+    Files at the top level say so rather than showing a bare dot.
+
+    Phase 6: this dropped the literal string "mock-intake" via str.replace,
+    which was wrong twice over — it named one specific intake, and a replace
+    would have edited that substring anywhere in the path rather than only at
+    the front. Now it drops the first path component, whatever it is called.
+    """
+    rel = Path(strip_intake_prefix(path)).parent.as_posix().strip("/.")
     return rel or "(intake root)"
 
 
@@ -245,6 +252,10 @@ def render(manifest, exceptions, classifications, dates, buckets, recon) -> str:
          for lbl, n in label_rows])
 
     generated = datetime.now().strftime("%d %B %Y, %H:%M")
+    # The collection's own folder name, read off the manifest rather than
+    # hardcoded — a client report that says "mock-intake/" names the wrong
+    # folder and undermines every other figure on the page.
+    source_name = manifest[0]["path"].split("/")[0] if manifest else "intake"
 
     # --- exception queue rows
     queue = sorted(exceptions, key=lambda r: (SEVERITY_ORDER.index(r["severity"]),
@@ -382,7 +393,7 @@ def render(manifest, exceptions, classifications, dates, buckets, recon) -> str:
 <header>
   <div class="kicker">Document intake QC</div>
   <h1>Intake review: {stat('total_files', n_files)} files received</h1>
-  <p class="meta">Generated {generated} &nbsp;·&nbsp; source: mock-intake/ &nbsp;·&nbsp;
+  <p class="meta">Generated {generated} &nbsp;·&nbsp; source: {html.escape(source_name)}/ &nbsp;·&nbsp;
      pipeline: scan &rarr; classify &rarr; rules &rarr; organize</p>
 </header>
 

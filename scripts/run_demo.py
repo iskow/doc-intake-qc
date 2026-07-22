@@ -27,7 +27,10 @@ both read classifications.csv and neither can honestly be produced without it.
 
 Run:  py scripts/run_demo.py
       py scripts/run_demo.py --no-ai
-Requires: mock-intake/ (regenerate with `py scripts/make_mock_data.py`).
+      py scripts/run_demo.py --input D:\\ClientData\\Acme
+--input is threaded to the two steps that read the intake (scan and organize);
+the rest work from manifest.csv and never see it.
+Requires: mock-intake/ by default (regenerate with `py scripts/make_mock_data.py`).
 The full run also requires Ollama serving gemma4:12b on 127.0.0.1:11434 —
 checked up front, so a missing model costs a second rather than a scan.
 """
@@ -44,8 +47,9 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from intake import add_input_arg, resolve_intake
+
 ROOT = Path(__file__).resolve().parents[1]
-INTAKE = ROOT / "mock-intake"
 SCRIPTS = ROOT / "scripts"
 ANSWER_KEY = ROOT / "seeded-errors.json"
 OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
@@ -62,6 +66,12 @@ STEPS: list[tuple[str, list[str], bool, str]] = [
     ("organize.py", ["--by", "custodian"],    False, "organized/by-custodian/"),
     ("report.py",   [],                       True,  "qc-report.html"),
 ]
+
+# The steps that accept --input. rules.py, classify.py and report.py all work
+# from manifest.csv and never touch the intake themselves, so handing them the
+# flag would be a lie about what they read. Kept as a set beside STEPS rather
+# than a fifth tuple field so qc_phase5.py's unpacking of STEPS is unchanged.
+TAKES_INPUT = {"scan.py", "organize.py"}
 
 
 def command_line(script: str, args: list[str]) -> str:
@@ -120,15 +130,18 @@ def main() -> int:
     parser.add_argument("--no-ai", action="store_true",
                         help="skip the model: deterministic rules and the "
                              "author/custodian axes only, no report")
+    add_input_arg(parser)
     args = parser.parse_args()
 
-    if not INTAKE.is_dir():
-        print(f"ERROR: {INTAKE} not found. "
-              f"Generate the fixture first: py scripts/make_mock_data.py",
-              file=sys.stderr)
-        return 1
+    # resolve_intake reports a missing folder and exits, so the runner does not
+    # need its own existence check.
+    intake = resolve_intake(args.input)
+    print(f"Intake: {intake}\n")
 
-    lost = seeded_dates_intact()
+    # The date guard reads the fixture's answer key, so it only means anything
+    # when we are running against the fixture. On a client intake there is no
+    # answer key and nothing to compare — silence is the honest result.
+    lost = seeded_dates_intact() if args.input is None else []
     if lost:
         print("WARNING: the fixture's seeded date anomalies are gone — git does "
               "not preserve modification times, so a fresh clone resets them.\n"
@@ -158,6 +171,10 @@ def main() -> int:
 
     started = time.perf_counter()
     for n, (script, argv, _, produces) in enumerate(steps, start=1):
+        # Only when the user actually asked for a different folder, so a plain
+        # run emits exactly the commands the README documents.
+        if args.input is not None and script in TAKES_INPUT:
+            argv = [*argv, "--input", str(intake)]
         label = command_line(script, argv)
         print(f"[{n}/{len(steps)}] {label}  ->  {produces}")
         step_started = time.perf_counter()

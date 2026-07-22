@@ -22,8 +22,13 @@ filename, was WRITTEN by Dana Cruz of Meridian, and was COLLECTED from Legal.
 A tool that collapses those into "one folder per client" quietly invents facts.
 See DECISIONS 2026-07-20 for why author, party, and custodian stay separate.
 
+The intake folder is whichever one scan.py recorded in intake-root.txt. Passing
+--input is optional and is checked against that record rather than trusted: a
+run that organizes folder B from a manifest built for folder A reconciles
+perfectly and is completely wrong, so the mismatch stops the run (Phase 6).
+
 NON-DESTRUCTIVE BY CONSTRUCTION — this is the whole point of the script:
-  * files under mock-intake/ are only ever opened for reading
+  * files under the intake are only ever opened for reading
   * the script refuses to run if the output folder is inside the intake folder
   * originals are never renamed, moved, or deleted
   * a filename collision STOPS the run before a single byte is copied, rather
@@ -49,8 +54,8 @@ embedded author, and a file from an unknown source all stay visible.
 
 Run:  py scripts/organize.py --by class
       py scripts/organize.py --by custodian --dry-run
-Requires: manifest.csv (scan.py). `--by class` also needs classifications.csv
-(classify.py).
+Requires: manifest.csv and intake-root.txt (scan.py). `--by class` also needs
+classifications.csv (classify.py).
 """
 
 from __future__ import annotations
@@ -63,8 +68,10 @@ import subprocess
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+from intake import (add_input_arg, from_manifest_path, intake_for_downstream,
+                    repo_relative, strip_intake_prefix)
+
 ROOT = Path(__file__).resolve().parents[1]
-INTAKE = ROOT / "mock-intake"
 MANIFEST = ROOT / "manifest.csv"
 CLASSIFICATIONS = ROOT / "classifications.csv"
 CUSTODIAN_MAP = ROOT / "custodian-map.csv"
@@ -163,8 +170,16 @@ def load_custodian_rules() -> list[tuple[str, str]]:
     return [(r["pattern"], r["custodian"]) for r in read_csv_rows(CUSTODIAN_MAP)]
 
 
-def match_custodian(path: str, rules: list[tuple[str, str]]) -> str:
+def match_custodian(inner_path: str, rules: list[tuple[str, str]]) -> str:
     """Return the first custodian whose pattern matches this path.
+
+    `inner_path` is the file's path INSIDE the intake — 'Invoices/INV-1.pdf',
+    not 'mock-intake/Invoices/INV-1.pdf'. That is a Phase 6 change and it is
+    what makes the map portable: patterns describe the client's folder
+    structure, which is the thing a collection log actually knows about, and
+    no longer the name of the folder we happened to stage the copy in. A map
+    written against 'mock-intake/...' matched nothing on any real engagement
+    and sent every file to Unassigned.
 
     fnmatch teaching note, two parts:
       * `fnmatchcase` is used with both sides lowercased by hand, rather than
@@ -173,11 +188,11 @@ def match_custodian(path: str, rules: list[tuple[str, str]]) -> str:
         explicitly makes the result identical on every machine, which the QC
         gate depends on. The fixture needs this: one invoice is filed as
         "inv 2026-004 brightworks FINAL.pdf" in lowercase.
-      * `*` in fnmatch matches across "/" too, so `mock-intake/Invoices/*`
-        also covers anything nested under Invoices. That is what we want for a
-        collection source — a custodian's dump includes its subfolders.
+      * `*` in fnmatch matches across "/" too, so `Invoices/*` also covers
+        anything nested under Invoices. That is what we want for a collection
+        source — a custodian's dump includes its subfolders.
     """
-    low = path.lower()
+    low = inner_path.lower()
     for pattern, custodian in rules:
         if fnmatchcase(low, pattern.lower()):
             return custodian
@@ -195,7 +210,8 @@ def buckets_by_custodian(manifest: list[dict[str, str]]) -> dict[str, str]:
     anything the table doesn't cover stays Unassigned instead of being guessed.
     """
     rules = load_custodian_rules()
-    return {r["path"]: match_custodian(r["path"], rules) for r in manifest}
+    return {r["path"]: match_custodian(strip_intake_prefix(r["path"]), rules)
+            for r in manifest}
 
 
 # --- Planning: every destination is decided before anything is written -----
@@ -211,7 +227,8 @@ def safe_folder(value: str) -> str:
 
 
 def plan_copies(manifest: list[dict[str, str]], buckets: dict[str, str],
-                out_root: Path) -> list[tuple[Path, Path, str, dict[str, str]]]:
+                out_root: Path, intake: Path
+                ) -> list[tuple[Path, Path, str, dict[str, str]]]:
     """Build the complete copy plan as [(src, dest, bucket, manifest row)].
 
     Every destination is computed before anything is written, so the collision
@@ -224,8 +241,9 @@ def plan_copies(manifest: list[dict[str, str]], buckets: dict[str, str],
     plan = []
     for row in manifest:
         bucket = safe_folder(buckets.get(row["path"], UNASSIGNED))
-        relpath = Path(row["path"]).relative_to(INTAKE.name)
-        plan.append((ROOT / row["path"], out_root / bucket / relpath, bucket, row))
+        relpath = strip_intake_prefix(row["path"])
+        plan.append((from_manifest_path(row["path"], intake),
+                     out_root / bucket / relpath, bucket, row))
     return plan
 
 
@@ -360,12 +378,12 @@ def write_crossref(path: Path, plan: list[tuple[Path, Path, str, dict[str, str]]
         writer.writerow(["original_path", "original_folder", "bucket",
                          "new_path", "sha256", "size_bytes", "created", "modified"])
         for src, dest, bucket, row in plan:
-            original_folder = Path(row["path"]).relative_to(INTAKE.name).parent
+            original_folder = Path(strip_intake_prefix(row["path"])).parent
             writer.writerow([
                 row["path"],
                 original_folder.as_posix() if original_folder.parts else "",
                 bucket,
-                dest.relative_to(ROOT).as_posix(),
+                repo_relative(dest),
                 row["sha256"],
                 row["size_bytes"],
                 row["created"],
@@ -373,7 +391,8 @@ def write_crossref(path: Path, plan: list[tuple[Path, Path, str, dict[str, str]]
             ])
 
 
-def organize(mode: str, out_root: Path, dry_run: bool = False) -> dict[str, int]:
+def organize(mode: str, out_root: Path, intake: Path,
+             dry_run: bool = False) -> dict[str, int]:
     """Copy every manifest file into out_root/<bucket>/. Returns bucket counts."""
     manifest = read_csv_rows(MANIFEST)
 
@@ -389,10 +408,10 @@ def organize(mode: str, out_root: Path, dry_run: bool = False) -> dict[str, int]
     # moves rather than trusted to the caller. resolve() first so a path like
     # "organized/../mock-intake/x" can't sneak past a string comparison.
     resolved = out_root.resolve()
-    if resolved == INTAKE.resolve() or INTAKE.resolve() in resolved.parents:
+    if resolved == intake or intake in resolved.parents:
         raise SystemExit(f"refusing to write inside the intake folder: {resolved}")
 
-    plan = plan_copies(manifest, buckets, out_root)
+    plan = plan_copies(manifest, buckets, out_root, intake)
     # Runs on --dry-run too: catching a collision is exactly what a dry run is
     # for, and it costs nothing.
     check_collisions(plan)
@@ -427,22 +446,25 @@ def main() -> None:
                         help="output root (default: organized/by-<mode>)")
     parser.add_argument("--dry-run", action="store_true",
                         help="report the buckets without copying anything")
+    add_input_arg(parser)
     args = parser.parse_args()
+
+    # Defaults to the folder scan.py recorded; --input is verified against it,
+    # never trusted over it.
+    intake = intake_for_downstream(args.input)
 
     # Each mode gets its own root so running all three doesn't merge three
     # different answers into one folder tree.
     out_root = args.out or (ROOT / "organized" / f"by-{args.mode}")
-    counts = organize(args.mode, out_root, args.dry_run)
+    counts = organize(args.mode, out_root, intake, args.dry_run)
 
     total = sum(counts.values())
     verb = "Would organize" if args.dry_run else "Organized"
-    print(f"{verb} {total} files by {args.mode} -> "
-          f"{out_root.relative_to(ROOT).as_posix()}/")
+    print(f"{verb} {total} files by {args.mode} -> {repo_relative(out_root)}/")
     for folder in sorted(counts, key=lambda k: (k == UNASSIGNED, k.lower())):
         print(f"  {folder:<36} {counts[folder]}")
     if not args.dry_run:
-        print(f"Cross-reference: "
-              f"{crossref_path(out_root).relative_to(ROOT).as_posix()}")
+        print(f"Cross-reference: {repo_relative(crossref_path(out_root))}")
         if not WINDOWS:
             print("Metadata: modified times only (non-Windows fallback).")
 

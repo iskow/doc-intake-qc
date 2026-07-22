@@ -50,4 +50,14 @@ Generate the deliverable: an HTML/MD QC report (summary stats, exceptions by sev
 - **5b — the portfolio close.** Not started. Finalize the case study via the case-study skill → `portfolio/doc-intake-qc.md`; qc-gate skill pass; `SOP-DRAFT.md` final pass. Optional Loom walkthrough — Joel records that himself.
   **QC gate:** qc-gate skill pass on the case study. Every number in it traceable to a gate result in STATUS. Zero typos.
 
+### Phase 6 — The intake becomes a parameter
+**ADDED 2026-07-22.** Not in the original plan. Phase 5b's SOP stranger test found that `scan.py`, `organize.py` and `run_demo.py` all hardcoded `INTAKE = ROOT / "mock-intake"` with no `--input` flag, so "copy the client's intake to the working folder" was not executable as written. STATUS named it "the one thing standing between this and a real engagement"; Joel scoped Phase 6 as that fix plus publishing the case study.
+
+Scope grew twice during the phase, both times because looking found something:
+- **The flag alone would not have worked.** `manifest.csv` stored paths via `relative_to(ROOT)`, which raises `ValueError` for any intake off the repo root. The path scheme had to change first — measured before any code was written. See DECISIONS 2026-07-22.
+- **Two more places hardcoded the fixture** beyond the three scripts STATUS named: `report.py`'s `folder_label` did a literal `.replace("mock-intake", "")`, and the report footer printed `source: mock-intake/` on every client report. Both found by the absence check, not by the brief.
+- **`custodian-map.csv` was fixture-only**, so on any real intake it matched nothing and sent every file to `Unassigned`. Fixed to intake-relative patterns at Joel's call.
+
+**QC gate (met): `py scripts/qc_phase6.py` → PASS 35, FAIL 0.** The fixture's manifest paths are byte-identical to pre-Phase-6; the path scheme round-trips exactly including an off-repo drive; a synthetic collection outside the repo scans, organizes and buckets correctly with the source left byte-for-byte unchanged; the mismatch guard refuses a wrong `--input`, explains itself, writes nothing, and still accepts a matching one; bad input is refused rather than misinterpreted; and no pipeline script hardcodes the intake name any more. Three negative tests, each isolating one claim.
+
 **Original Phase 5 gate, for the record:** Fresh-eyes run: follow the README from scratch and it works. qc-gate skill pass on the case study. Zero typos. The fresh-eyes clause is now automated — `qc_phase5.py` deletes every generated artifact and runs the documented command.

@@ -1,8 +1,8 @@
 pattern,custodian,source_note
-mock-intake/Reports/RPT-2026-Q1_Financials.xlsx,P. Bautista (Finance),Workbook produced by Finance and filed into the Ops reports folder
-mock-intake/data_export.csv,ERP Export (non-custodial source),System export - no human custodian
-mock-intake/Invoices/*,M. Santos (Accounts Payable),AP shared drive
-mock-intake/Correspondence/*,R. Dimalanta (Project Management),PM mailbox export
-mock-intake/Contracts/*,K. Aguilar (Legal),Legal contract repository
-mock-intake/Reports/*,L. Ferrer (Operations),Operations reporting folder
-mock-intake/Site Photos/*,Field Tablet 02 (Site Ops),Site device image dump
+Reports/RPT-2026-Q1_Financials.xlsx,P. Bautista (Finance),Workbook produced by Finance and filed into the Ops reports folder
+data_export.csv,ERP Export (non-custodial source),System export - no human custodian
+Invoices/*,M. Santos (Accounts Payable),AP shared drive
+Correspondence/*,R. Dimalanta (Project Management),PM mailbox export
+Contracts/*,K. Aguilar (Legal),Legal contract repository
+Reports/*,L. Ferrer (Operations),Operations reporting folder
+Site Photos/*,Field Tablet 02 (Site Ops),Site device image dump

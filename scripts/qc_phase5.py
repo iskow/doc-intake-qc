@@ -54,10 +54,17 @@ FULL = DOCS / "qc-report-full.png"
 # Generated artifacts. Deleted before the fresh run, because "it works" has to
 # mean "it works from nothing", not "it works over yesterday's output".
 GENERATED = ["manifest.csv", "exceptions.csv", "classifications.csv",
-             "qc-report.html", "organized/"]
+             "intake-root.txt", "qc-report.html", "organized/"]
 
 # Scripts that are NOT pipeline stages, so their absence from STEPS is correct.
-NON_PIPELINE = {"make_mock_data.py", "run_demo.py", "capture_screenshots.py"}
+# Two kinds, and the difference is worth keeping visible:
+#   the generator, the runner and the screenshot tool are BUILD-TIME tools —
+#     they are run by a human, never as a step inside the chain;
+#   intake.py is a LIBRARY — imported by scan.py, organize.py, report.py and
+#     run_demo.py, so it runs on every pipeline step and is a stage in none.
+# A genuinely new stage dropped into scripts/ still fails this check.
+NON_PIPELINE = {"make_mock_data.py", "run_demo.py", "capture_screenshots.py",
+                "intake.py"}
 
 # The README's results table, mapped to the report's own data-qc figures. Both
 # sides of this mapping are asserted complete below: a row in the README with no
@@ -390,7 +397,7 @@ def main() -> int:
         check(git_ignored(f"{ROOT.as_posix()}/{name}"),
               f"gitignore: {name} stays out of the repo (generated, rebuilt in one command)")
 
-    for phase in range(6):
+    for phase in range(7):
         check((SCRIPTS / f"qc_phase{phase}.py").is_file(),
               f"gate script present: qc_phase{phase}.py")
 

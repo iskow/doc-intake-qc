@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Phase 1 — Inventory scanner for the Document Intake QC Agent.
 
-Walks mock-intake/ READ-ONLY and writes manifest.csv: one row per file with
+Walks the intake folder READ-ONLY and writes manifest.csv: one row per file with
 path, name, extension, true file type (from magic bytes, not the extension),
 size in bytes, SHA-256 hash, created/modified timestamps, and the embedded
 document author (PDF /Author, DOCX/XLSX creator) where the format carries one.
@@ -10,21 +10,31 @@ Archives (e.g. old_backup.zip) are inventoried as SINGLE files — the scanner
 records the zip itself and does NOT look inside. Extracting archives is the
 user's call; the pipeline never silently expands them.
 
-Read-only guarantee: files under mock-intake/ are only ever opened with mode
-'rb' (read binary). The scanner writes exactly one file — manifest.csv at the
-project root — and never modifies anything in the intake folder.
+Read-only guarantee: files under the intake are only ever opened with mode
+'rb' (read binary). The scanner writes exactly two files — manifest.csv and
+intake-root.txt, both at the project root — and never modifies anything in the
+intake folder.
 
-Run:  py scripts/scan.py        (Windows launcher; use python3 on macOS/Linux)
-Output: manifest.csv at the project root.
+The intake defaults to the shipped fixture, mock-intake/, and --input points it
+anywhere else. The resolved folder is recorded in intake-root.txt so the later
+steps organize the same collection this manifest describes; see intake.py for
+why that record exists rather than a flag on each script.
+
+Run:  py scripts/scan.py                        (Windows launcher; python3 elsewhere)
+      py scripts/scan.py --input D:\\ClientData\\Acme
+Output: manifest.csv and intake-root.txt at the project root.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
+
+from intake import add_input_arg, record_intake, resolve_intake, to_manifest_path
 
 # Author-reading libs. Imported at top so a missing dependency fails loudly at
 # startup, not halfway through a scan. All three are installed under `py`.
@@ -42,7 +52,6 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 # scripts/scan.py -> scripts -> project root, so paths work no matter where
 # the script is run from.
 ROOT = Path(__file__).resolve().parents[1]
-INTAKE = ROOT / "mock-intake"
 MANIFEST = ROOT / "manifest.csv"
 
 # Magic-byte signatures: the first bytes of a file reveal its real type, no
@@ -150,7 +159,7 @@ def read_author(path: Path) -> str:
     return author if author else UNASSIGNED
 
 
-def scan_file(path: Path) -> dict:
+def scan_file(path: Path, intake: Path) -> dict:
     """Build one manifest row for a single file."""
     st = path.stat()
     digest, head = hash_and_head(path)
@@ -159,7 +168,7 @@ def scan_file(path: Path) -> dict:
     # inode-change time. The fixture only tampers with mtime, and Phase 2's
     # date rule checks mtime, so 'created' here is informational.
     return {
-        "path": path.relative_to(ROOT).as_posix(),
+        "path": to_manifest_path(path, intake),
         "name": path.name,
         "extension": path.suffix,          # kept raw ('.PDF' vs '.pdf' matters to Phase 2)
         "true_type": true_type(head),
@@ -172,10 +181,15 @@ def scan_file(path: Path) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Inventory an intake folder into manifest.csv (read-only).")
+    add_input_arg(parser)
+    intake = resolve_intake(parser.parse_args().input)
+
     # rglob("*") walks every path recursively; keep only real files (skips the
     # folder entries themselves). sorted() gives a stable, reviewable order.
-    files = sorted(p for p in INTAKE.rglob("*") if p.is_file())
-    rows = [scan_file(p) for p in files]
+    files = sorted(p for p in intake.rglob("*") if p.is_file())
+    rows = [scan_file(p, intake) for p in files]
 
     with MANIFEST.open("w", newline="", encoding="utf-8") as f:
         # newline="" is the documented way to write CSV on Windows — without it
@@ -185,7 +199,12 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Scanned {len(rows)} files -> {MANIFEST.relative_to(ROOT).as_posix()}")
+    # Recorded only after the manifest is safely written, so a crashed scan
+    # never leaves a record pointing at a folder no manifest describes.
+    record_intake(intake)
+
+    print(f"Scanned {len(rows)} files in {intake} "
+          f"-> {MANIFEST.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

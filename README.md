@@ -20,11 +20,23 @@ About 45 seconds. It runs seven steps in order and writes `qc-report.html` — o
 
 No local model? `py scripts/run_demo.py --no-ai` runs the deterministic half — the rules engine and the author/custodian axes stand alone on a machine with nothing installed.
 
+### Running it on your own folder
+
+```
+py scripts/run_demo.py --input D:\ClientData\Acme
+```
+
+`mock-intake/` is only the default. `--input` points the pipeline at any folder, on any drive, and the manifest, the buckets and the report all take their names from that collection rather than from the fixture.
+
+Two things stop the obvious way to get this wrong. `scan.py` records which folder it read into `intake-root.txt`, and `organize.py` refuses to run if its own `--input` disagrees — scanning one folder and organizing another produces a result where every total reconciles against the wrong source. And the custodian map matches paths *inside* the intake (`Invoices/*`), so it keeps working whatever the collection folder is called.
+
+Work on a copy, never on the client's only copy.
+
 ## What it does
 
 | # | Step | Produces |
 |---|---|---|
-| 1 | `py scripts/scan.py` | `manifest.csv` — one row per file: true type read from magic bytes, size, SHA-256, dates, embedded author |
+| 1 | `py scripts/scan.py` | `manifest.csv` — one row per file: true type read from magic bytes, size, SHA-256, dates, embedded author. Also `intake-root.txt`, recording which folder was read |
 | 2 | `py scripts/classify.py` | `classifications.csv` — invoice / contract / correspondence / report / other, from a local model |
 | 3 | `py scripts/rules.py` | `exceptions.csv` — twelve checks, one row per (file, rule), each with a severity and a reason |
 | 4 | `py scripts/organize.py --by class` | `organized/by-class/` — a non-destructive copy bucketed by what each document is |
@@ -90,7 +102,7 @@ Stated here for the same reason the report states them: a client finding out lat
 | [`DECISIONS.md`](DECISIONS.md) | Why each choice was made, and what was rejected |
 | [`SOP-DRAFT.md`](SOP-DRAFT.md) | The repeatable client process behind the build |
 
-`manifest.csv`, `exceptions.csv`, `classifications.csv`, `organized/` and `qc-report.html` are generated, so they are not committed. One command rebuilds them.
+`manifest.csv`, `exceptions.csv`, `classifications.csv`, `intake-root.txt`, `organized/` and `qc-report.html` are generated, so they are not committed. One command rebuilds them.
 
 ## How it is tested
 
@@ -103,7 +115,8 @@ Every phase has a QC gate that runs the real pipeline and checks the output agai
 | `py scripts/qc_phase2.py` | 22 | All 21 planted errors caught, zero false positives |
 | `py scripts/qc_phase3.py` | 17 | 32/32 classification accuracy; no invented labels |
 | `py scripts/qc_phase4.py` | 131 | Copies byte-identical and metadata-faithful; report figures recomputed independently |
-| `py scripts/qc_phase5.py` | 85 | The demo runs from scratch; this README matches the code |
+| `py scripts/qc_phase5.py` | 88 | The demo runs from scratch; this README matches the code |
+| `py scripts/qc_phase6.py` | 35 | Runs on any folder; a scan/organize mismatch is refused |
 
 Two rules the gates follow throughout:
 

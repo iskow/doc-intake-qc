@@ -59,13 +59,14 @@ import sys
 import tempfile
 from pathlib import Path
 
+from intake import DEFAULT_INTAKE, strip_intake_prefix
 from organize import (CUSTODIAN_MAP, MODES, UNASSIGNED, WINDOWS, check_collisions,
                       crossref_path, load_custodian_rules, match_custodian,
                       organize, plan_copies, robocopy_files, safe_folder)
 from rules import RULE_DOCS
 
 ROOT = Path(__file__).resolve().parents[1]
-INTAKE = ROOT / "mock-intake"
+INTAKE = DEFAULT_INTAKE
 MANIFEST = ROOT / "manifest.csv"
 CLASSIFICATIONS = ROOT / "classifications.csv"
 ORGANIZED = ROOT / "organized"
@@ -171,7 +172,10 @@ def expected_buckets(mode: str, key: dict, manifest: list[dict[str, str]],
         return out
 
     rules = load_custodian_rules()
-    return {r["path"]: match_custodian(r["path"], rules) for r in manifest}
+    # Patterns are matched against the path INSIDE the intake from Phase 6 on,
+    # so the map is portable to a client folder with any name.
+    return {r["path"]: match_custodian(strip_intake_prefix(r["path"]), rules)
+            for r in manifest}
 
 
 def main() -> int:
@@ -386,7 +390,8 @@ def main() -> int:
     # The guard is the whole non-destructive promise, so prove it fires rather
     # than assuming it would. Aimed at a path inside the intake folder.
     try:
-        organize("author", INTAKE / "would-be-destroyed", dry_run=True)
+        organize("author", INTAKE / "would-be-destroyed", INTAKE.resolve(),
+                 dry_run=True)
         guard_held = False
     except SystemExit:
         guard_held = True
@@ -473,7 +478,8 @@ def main() -> int:
         stopped = True
     check(stopped, "collision preflight: a plan writing two files to one path is refused")
 
-    real_plan = plan_copies(manifest, bucket_of["custodian"], ORGANIZED / "by-custodian")
+    real_plan = plan_copies(manifest, bucket_of["custodian"],
+                            ORGANIZED / "by-custodian", INTAKE.resolve())
     try:
         check_collisions(real_plan)
         clean_ok = True
