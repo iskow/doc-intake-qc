@@ -2,7 +2,7 @@
 
 **Repo:** https://github.com/iskow/doc-intake-qc.git (push here at each phase close)
 **Active:** yes (priority 1 of 5 — see PROJECT-STANDARD.md build order)
-**Current phase:** Phase 6 — **COMPLETE (code + documentation), all seven gates green (39/13/22/17/131/88/35 = 345 checks, 0 failures). NOT yet committed or pushed.** The intake is now a parameter: `--input` on `scan.py`, `organize.py` and `run_demo.py`, the hardcoded-path RISK retired, and the silent scan/organize mismatch killed by a record file. This session did the documentation half: corrected the four stale hardcoded-path references in the SOP, voice-passed the SOP (Relativity register) and case study (warm-professional), regenerated the SOP HTML+PDF, and published the case study. See "Next" — only the commit/push remains.
+**Current phase:** Phase 6 — **COMPLETE (code + documentation), all seven gates green (39/13/22/17/131/88/35 = 345 checks, 0 failures). Committed and pushed (`2d64631`).** The intake is now a parameter: `--input` on `scan.py`, `organize.py` and `run_demo.py`, the hardcoded-path RISK retired, and the silent scan/organize mismatch killed by a record file. This session did the documentation half: corrected the four stale hardcoded-path references in the SOP, voice-passed the SOP (Relativity register) and case study (warm-professional), regenerated the SOP HTML+PDF, and published the case study. See "Next" — only the commit/push remains.
 **Last updated:** 2026-07-22 (Phase 6 documentation half: SOP facts corrected + voice pass, case study updated to 345/seven + published, HTML/PDF regenerated, qc_phase6.py re-run 35/0)
 
 ## Done
@@ -110,7 +110,7 @@
 
 This session did the documentation half in order: SOP facts corrected → SOP voice pass (Relativity register) → SOP HTML/PDF regenerated and re-verified → case study figures/timeline updated → case study published. Details in the Done log above and DECISIONS 2026-07-22.
 
-**Open item — commit and push.** Nothing from Phase 6 is committed yet: the code half's 12 modified + 2 new files (`scripts/intake.py`, `scripts/qc_phase6.py`), plus the SOP (`sops/internal/sop-document-intake-qc.md` / `.html` / `.pdf`) and the case study (`portfolio/doc-intake-qc.md`) in the Board of Advisors workspace. The tree is runnable and every gate is green, so it is safe to commit as-is. **Ask Joel before pushing.** After the push, this project's planned phases are all done; the next portfolio build is **invoice-extraction** (priority 2 — see PROJECT-STANDARD build order) in a fresh session.
+**Committed and pushed** as `2d64631` (`babe612..2d64631`), one commit covering the code half + this documentation half; `PHASE-6B-PROMPT.md` left untracked per Joel. The SOP (`sops/internal/sop-document-intake-qc.md` / `.html` / `.pdf`) and case study (`portfolio/doc-intake-qc.md`) live in the Board of Advisors workspace, which is not a git repo, so they ship as saved files there. **This project's planned phases are all done.** The next portfolio build is **invoice-extraction** (priority 2 — see PROJECT-STANDARD build order) in a fresh session.
 
 **Do not re-add the Loom walkthrough** — Joel dropped it from scope on 2026-07-22.
 
